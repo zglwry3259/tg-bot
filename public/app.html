@@ -1,0 +1,1111 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>大管家 Mini App</title>
+<script src="/app/telegram-web-app.js"></script>
+<style>
+  :root {
+    --bg: #0e1621; --card: #17212b; --card2: #1c2733; --input: #232e3c;
+    --accent: #2ea6ff; --accent2: #5eb5f7; --text: #f5f5f5; --sub: #708499;
+    --ok: #4caf50; --err: #e53935; --warn: #ff9800; --line: #202b36;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Microsoft YaHei", sans-serif; font-size: 14px; }
+  .hidden { display: none !important; }
+
+  /* 顶部 */
+  .topbar { position: sticky; top: 0; z-index: 50; background: var(--bg); padding: 10px 14px 8px; border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 10px; }
+  .topbar .avatar { width: 36px; height: 36px; border-radius: 50%; background: var(--card2); display: flex; align-items: center; justify-content: center; font-size: 16px; overflow: hidden; flex-shrink: 0; }
+  .topbar .avatar img { width: 100%; height: 100%; object-fit: cover; }
+  .topbar .who { flex: 1; min-width: 0; }
+  .topbar .who .n { font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .topbar .who .s { font-size: 12px; color: var(--sub); }
+  .badge { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 11px; font-weight: 600; margin-left: 6px; }
+  .badge.admin { background: rgba(46,166,255,.15); color: var(--accent); }
+  .badge.user { background: rgba(112,132,153,.15); color: var(--sub); }
+
+  /* Tab 栏 */
+  .tabs { position: sticky; top: 54px; z-index: 40; background: var(--bg); display: flex; border-bottom: 1px solid var(--line); overflow-x: auto; }
+  .tab { flex: 1; min-width: 64px; text-align: center; padding: 10px 6px 8px; font-size: 12px; color: var(--sub); cursor: pointer; border-bottom: 2px solid transparent; white-space: nowrap; }
+  .tab.on { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
+
+  .content { padding: 12px; padding-bottom: 40px; }
+  .card { background: var(--card); border-radius: 12px; padding: 12px 14px; margin-bottom: 10px; border: 1px solid var(--line); }
+  .card h3 { font-size: 14px; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
+  .card .desc { font-size: 12px; color: var(--sub); margin-bottom: 8px; }
+
+  .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .stat { background: var(--card2); border-radius: 10px; padding: 10px 6px; text-align: center; }
+  .stat .v { font-size: 20px; font-weight: 700; color: var(--accent); }
+  .stat .l { font-size: 11px; color: var(--sub); margin-top: 2px; }
+
+  .row { display: flex; align-items: center; gap: 8px; padding: 10px 2px; border-bottom: 1px solid var(--line); cursor: pointer; }
+  .row:last-child { border-bottom: none; }
+  .row .t { flex: 1; min-width: 0; }
+  .row .t .n { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .row .t .s { font-size: 11px; color: var(--sub); }
+  .row .arrow { color: var(--sub); font-size: 16px; }
+
+  .btn { display: inline-block; border: none; border-radius: 10px; padding: 9px 12px; font-size: 13px; font-weight: 500; cursor: pointer; background: var(--input); color: var(--text); text-align: center; }
+  .btn:active { opacity: .8; }
+  .btn.accent { background: var(--accent); color: #fff; }
+  .btn.ok { background: rgba(76,175,80,.15); color: var(--ok); }
+  .btn.err { background: rgba(229,57,53,.15); color: var(--err); }
+  .btn.warn { background: rgba(255,152,0,.15); color: var(--warn); }
+  .btn.ghost { background: transparent; border: 1px solid var(--line); color: var(--sub); }
+  .btn:disabled { opacity: .45; }
+  .btn.full { width: 100%; }
+  .btn.sm { padding: 6px 10px; font-size: 12px; border-radius: 8px; }
+
+  .btnrow { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0; }
+  input, textarea, select { width: 100%; background: var(--input); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; color: var(--text); font-size: 14px; outline: none; margin: 6px 0; font-family: inherit; }
+  input:focus, textarea:focus { border-color: var(--accent); }
+  textarea { min-height: 80px; resize: vertical; }
+  label.f { display: block; font-size: 12px; color: var(--sub); margin-top: 8px; }
+
+  .tag { display: inline-block; padding: 1px 8px; border-radius: 10px; font-size: 11px; margin-right: 6px; }
+  .tag.active { background: rgba(76,175,80,.15); color: var(--ok); }
+  .tag.ended { background: rgba(112,132,153,.15); color: var(--sub); }
+  .tag.cancelled { background: rgba(229,57,53,.15); color: var(--err); }
+  .tag.won { background: rgba(255,193,7,.18); color: #ffd54f; }
+  .tag.lose { background: rgba(112,132,153,.15); color: var(--sub); }
+
+  .ops { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .ops .btn { padding: 10px 4px; font-size: 12px; }
+
+  /* Toast */
+  #toast { position: fixed; left: 50%; bottom: 60px; transform: translateX(-50%); background: rgba(32,45,58,.96); color: var(--text); padding: 9px 16px; border-radius: 10px; font-size: 13px; z-index: 999; max-width: 86%; box-shadow: 0 4px 16px rgba(0,0,0,.4); display: none; border: 1px solid var(--line); }
+  #toast.ok { border-color: var(--ok); } #toast.err { border-color: var(--err); } #toast.warn { border-color: var(--warn); }
+
+  /* Modal */
+  .modal-mask { position: fixed; inset: 0; background: rgba(0,0,0,.55); z-index: 200; display: flex; align-items: flex-end; }
+  .modal { background: var(--card); width: 100%; border-radius: 16px 16px 0 0; padding: 16px; max-height: 82vh; overflow-y: auto; }
+  .modal h3 { margin-bottom: 10px; }
+  .modal .mbtns { display: flex; gap: 10px; margin-top: 12px; }
+  .modal .mbtns .btn { flex: 1; }
+
+  .empty { text-align: center; color: var(--sub); padding: 26px 10px; font-size: 13px; }
+  .link { color: var(--accent); }
+  .kv { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px dashed var(--line); font-size: 13px; }
+  .kv:last-child { border-bottom: none; }
+  .kv .k { color: var(--sub); }
+  .back { background: none; border: none; color: var(--accent); font-size: 14px; cursor: pointer; padding: 2px 6px; }
+  .mt6 { margin-top: 6px; } .mt10 { margin-top: 10px; } .mb10 { margin-bottom: 10px; }
+.field { margin-bottom: 10px; }
+.field label { display: block; font-size: 12px; color: var(--sub); margin-bottom: 4px; }
+  .small { font-size: 12px; color: var(--sub); }
+  .center { text-align: center; }
+</style>
+</head>
+<body>
+
+<div class="topbar" id="topbar">
+  <div class="avatar" id="avatar">🤖</div>
+  <div class="who">
+    <div class="n" id="whoName">加载中...</div>
+    <div class="s" id="whoSub"></div>
+  </div>
+</div>
+
+<div class="tabs" id="tabs"></div>
+
+<div class="content" id="content">
+  <div class="center" style="padding:60px 0; color:var(--sub);" id="loading">加载中...</div>
+</div>
+
+<div id="toast"></div>
+
+<div class="modal-mask hidden" id="modalMask" onclick="if(event.target===this)closeModal()">
+  <div class="modal" id="modalBox"></div>
+</div>
+
+<script>
+/* ================= 全局 ================= */
+var TG = window.Telegram && window.Telegram.WebApp;
+if (TG) { TG.ready(); try { TG.expand(); } catch(e){} }
+var INIT = (TG && TG.initData) || '';
+/* 开发调试模式：?dev=1&uid=xxx&key=xxx（服务端校验 key，测试完即关闭） */
+var DEV = /[?&]dev=1/.test(location.search);
+var DEV_KEY = (location.search.match(/[?&]key=([^&]+)/) || [])[1] || '';
+var DEV_UID = (location.search.match(/[?&]uid=(\d+)/) || [])[1] || '1';
+var DEV_NAME = (location.search.match(/[?&]uname=([^&]+)/) || [])[1] || 'devadmin';
+var USER = null, IS_ADMIN = false, CUR_TAB = 'home';
+var $ = function(id){ return document.getElementById(id); };
+function esc(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function toast(msg, type){ var t=$('toast'); t.textContent=msg; t.className=type||''; t.style.display='block'; clearTimeout(t._tm); t._tm=setTimeout(function(){ t.style.display='none'; }, 2600); }
+function api(path, body, cb){
+  var headers = {'Content-Type':'application/json'};
+  if (DEV) {
+    headers['x-miniapp-dev'] = DEV_KEY;
+    body = body || {}; if (!body.uid) body.uid = DEV_UID;
+  }
+  fetch(path, { method:'POST', headers: headers, body: JSON.stringify(body||{}) })
+    .then(function(r){ return r.json(); })
+    .then(function(d){ cb && cb(d); })
+    .catch(function(){ cb && cb({ ok:false, error:'网络错误' }); });
+}
+function confirmDlg(title, html, onOk, okText){
+  $('modalBox').innerHTML = '<h3>'+esc(title)+'</h3><div style="font-size:13px;color:var(--sub);">'+html+'</div><div class="mbtns"><button class="btn ghost" onclick="closeModal()">取消</button><button class="btn accent" id="mOk">'+esc(okText||'确定')+'</button></div>';
+  showModal();
+  $('mOk').onclick = function(){ closeModal(); onOk && onOk(); };
+}
+function showModal(){ $('modalMask').classList.remove('hidden'); }
+function closeModal(){ $('modalMask').classList.add('hidden'); }
+
+/* ================= 鉴权 ================= */
+function doAuth(){
+  if (DEV) {
+    api('/app/api/auth', { initData: '', uid: DEV_UID, username: DEV_NAME }, function(d){
+      if (!d || !d.ok) { $('loading').innerHTML = 'dev 鉴权失败：' + esc(d&&d.error||'未知错误'); return; }
+      USER = d.user; IS_ADMIN = !!d.isAdmin;
+      renderTopbar(); renderTabs(); renderHome();
+    });
+    return;
+  }
+  if (!INIT) {
+    $('loading').innerHTML = '请通过 Telegram 打开本应用';
+    $('whoName').textContent = '未在 Telegram 内';
+    return;
+  }
+  api('/app/api/auth', { initData: INIT }, function(d){
+    if (!d || !d.ok) { $('loading').innerHTML = '身份验证失败：' + esc(d&&d.error||'未知错误'); return; }
+    USER = d.user; IS_ADMIN = !!d.isAdmin;
+    renderTopbar();
+    renderTabs(); renderHome();
+  });
+}
+function renderTopbar(){
+  var name = USER.first_name || USER.username || ('用户'+USER.id);
+  $('whoName').innerHTML = esc(name) + (IS_ADMIN ? '<span class="badge admin">管理员</span>' : '<span class="badge user">用户</span>');
+  $('whoSub').textContent = USER.username ? '@'+USER.username : ('TG ID: '+USER.id);
+  var av = $('avatar');
+  if (USER.photo_url) { av.innerHTML = '<img src="'+esc(USER.photo_url)+'">'; }
+  else { av.textContent = (name||'?').slice(0,1); }
+}
+
+/* ================= Tab ================= */
+function renderTabs(){
+  var tabs = IS_ADMIN
+    ? [ ['home','🏠 首页'], ['groups','👥 群管理'], ['channels','📢 频道'], ['lottery','🎲 抽奖'], ['feat','🤖 功能'] ]
+    : [ ['home','🏠 首页'], ['lottery','🎲 抽奖'] ];
+  var html = '';
+  tabs.forEach(function(t){ html += '<div class="tab'+(CUR_TAB===t[0]?' on':'')+'" id="tab_'+t[0]+'" onclick="switchTab(\''+t[0]+'\')">'+t[1]+'</div>'; });
+  $('tabs').innerHTML = html;
+}
+function switchTab(t){
+  CUR_TAB = t;
+  renderTabs();
+  if (t==='home') renderHome();
+  else if (t==='groups') renderGroups();
+  else if (t==='channels') renderChannels();
+  else if (t==='lottery') renderLotteries();
+  else if (t==='feat') renderFeat();
+}
+
+/* ================= 首页 ================= */
+function renderHome(){
+  if (IS_ADMIN) { renderAdminHome(); return; }
+  renderMe();
+}
+
+function renderAdminHome(){
+  api('/app/api/overview', { initData: INIT }, function(d){
+    var html = '';
+    if (!d || !d.ok) { $('content').innerHTML = '<div class="empty">加载失败</div>'; return; }
+    html += '<div class="card"><h3>🤖 Bot 状态</h3><div class="kv"><span class="k">账号</span><span>@'+esc(d.bot.username||'-')+'</span></div>'
+      + '<div class="kv"><span class="k">状态</span><span>'+(d.bot.online?'<span style="color:var(--ok)">● 在线</span>':'<span style="color:var(--err)">● 离线</span>')+'</span></div>'
+      + (d.bot.webhook?'<div class="kv"><span class="k">Webhook</span><span class="small">'+esc(d.bot.webhook)+'</span></div>':'') + '</div>';
+    var s = d.stats;
+    html += '<div class="grid">'
+      + '<div class="stat"><div class="v">'+s.groups+'</div><div class="l">群组</div></div>'
+      + '<div class="stat"><div class="v">'+s.channels+'</div><div class="l">频道</div></div>'
+      + '<div class="stat"><div class="v">'+s.lotteries+'</div><div class="l">抽奖</div></div>'
+      + '<div class="stat"><div class="v">'+s.warnKeys+'</div><div class="l">警告记录</div></div>'
+      + '<div class="stat"><div class="v">'+s.pendingVerify+'</div><div class="l">待验证</div></div>'
+      + '<div class="stat"><div class="v">'+s.verifyCfgs+'</div><div class="l">验证开启群</div></div>'
+      + '</div>';
+    html += '<div class="card"><h3>快捷入口</h3><div class="btnrow">'
+      + '<button class="btn accent" onclick="switchTab(\'groups\')">👥 群管理</button>'
+      + '<button class="btn" onclick="switchTab(\'channels\')">📢 频道管理</button>'
+      + '<button class="btn" onclick="switchTab(\'lottery\')">🎲 抽奖</button>'
+      + '</div></div>';
+    html += '<div class="card"><div class="small">管理员权限：当前 TG 账号已在管理员名单（首次请通过「我的」页输入管理密码激活）</div></div>';
+    $('content').innerHTML = html;
+  });
+}
+
+/* ================= 我的（用户自助） ================= */
+function renderMe(){
+  api('/app/api/me', { initData: INIT }, function(d){
+    if (!d || !d.ok) { $('content').innerHTML = '<div class="empty">加载失败：'+esc(d&&d.error||'')+'</div>'; return; }
+    var html = '';
+    // 身份
+    html += '<div class="card"><h3>👤 我的</h3>'
+      + '<div class="kv"><span class="k">TG 账号</span><span>'+(d.user.username?'@'+esc(d.user.username):esc(d.user.first_name))+'</span></div>'
+      + '<div class="kv"><span class="k">TG ID</span><span>'+d.user.id+'</span></div>'
+      + '<div class="kv"><span class="k">所在群</span><span>'+d.groups.length+' 个</span></div>'
+      + '</div>';
+    if (!d.isAdmin) {
+      html += '<div class="card"><div class="small">你是普通用户。如需管理员功能，请输入管理密码：</div>'
+        + '<input type="password" id="adminPw" placeholder="管理密码">'
+        + '<button class="btn accent full mt6" onclick="adminLogin()">验证管理员身份</button></div>';
+    }
+    // 待兑奖
+    html += '<div class="card"><h3>🎟️ 待兑奖 <span class="small">('+d.redeem.length+')</span></h3>';
+    if (!d.redeem.length) html += '<div class="empty">暂无待兑奖记录</div>';
+    else d.redeem.forEach(function(r){
+      html += '<div class="row" style="cursor:default"><div class="t"><div class="n">'+esc(r.prize||'奖品')+'</div><div class="s">'+esc(r.name||'')+' · '+esc(r.groupName||'')+'</div>'
+        + (r.code ? '<div class="s" style="color:var(--warn)">兑奖码：<b>'+esc(r.code)+'</b></div>' : '') + '</div></div>';
+    });
+    html += '</div>';
+    // 警告
+    html += '<div class="card"><h3>⚠️ 我的警告 <span class="small">('+d.warns.length+')</span></h3>';
+    if (!d.warns.length) html += '<div class="empty">暂无警告，继续保持 👍</div>';
+    else d.warns.forEach(function(w){ html += '<div class="kv"><span class="k">'+esc(w.group)+'</span><span style="color:var(--warn)">'+w.count+' 次</span></div>'; });
+    html += '</div>';
+    // 抽奖
+    html += '<div class="card"><h3>🎲 我参与的抽奖 <span class="small">('+d.lotteries.length+')</span></h3>';
+    if (!d.lotteries.length) html += '<div class="empty">还没有参与过抽奖</div>';
+    else d.lotteries.forEach(function(l){
+      var st = l.status==='active' ? '<span class="tag active">进行中</span>' : (l.status==='cancelled' ? '<span class="tag cancelled">已结束</span>' : '<span class="tag ended">已开奖</span>');
+      html += '<div class="row" style="cursor:default"><div class="t"><div class="n">'+st+' '+esc(l.name)+'</div>'
+        + '<div class="s">'+esc(l.group)+'</div></div>'
+        + (l.won ? '<span class="tag won">中奖 '+esc(l.prize||'')+'</span>' : '<span class="tag lose">未中奖</span>') + '</div>';
+    });
+    html += '</div>';
+    // 入群验证
+    html += '<div class="card"><h3>🔐 入群验证状态</h3>';
+    if (!d.verifies.length) html += '<div class="empty">没有待完成的入群验证</div>';
+    else d.verifies.forEach(function(v){ html += '<div class="kv"><span class="k">'+esc(v.group)+'</span><span style="color:var(--warn)">⏳ 待验证</span></div>'; });
+    html += '</div>';
+    $('content').innerHTML = html;
+  });
+}
+
+function adminLogin(){
+  var pw = $('adminPw').value;
+  if (!pw) { toast('请输入管理密码', 'warn'); return; }
+  api('/app/api/admin-login', { initData: INIT, password: pw }, function(d){
+    if (d && d.ok) { toast('管理员验证成功', 'ok'); IS_ADMIN = true; renderTopbar(); renderTabs(); renderHome(); }
+    else toast((d&&d.error)||'密码错误', 'err');
+  });
+}
+
+/* ================= 群管理 ================= */
+var CUR_GROUP = null;
+function renderGroups(){
+  api('/app/api/chats', { initData: INIT }, function(d){
+    if (!d || !d.ok) { $('content').innerHTML = '<div class="empty">加载失败</div>'; return; }
+    var html = '<div class="card"><h3>👥 群管理</h3><div class="desc">选择群组进行管理（共 '+d.groups.length+' 个）</div></div>';
+    if (!d.groups.length) html += '<div class="empty">Bot 尚未加入任何群，请先把 bot 拉进群并设为管理员</div>';
+    d.groups.forEach(function(g){
+      var lock = g.cfg && g.cfg.lock ? '🔒' : '';
+      html += '<div class="card row" onclick="openGroup('+g.id+',\''+esc(g.title||('群 '+g.id)).replace(/'/g,'\\\'')+'\')"><div class="t"><div class="n">'+lock+' '+esc(g.title||('群 '+g.id))+'</div><div class="s">'+g.id+'</div></div><div class="arrow">›</div></div>';
+    });
+    $('content').innerHTML = html;
+  });
+}
+
+function openGroup(id, title){
+  CUR_GROUP = { id: id, title: title };
+  api('/app/api/chats', { initData: INIT }, function(d){
+    var g = null;
+    (d.groups||[]).forEach(function(x){ if (String(x.id)===String(id)) g = x; });
+    renderGroupDetail(g || { id: id, title: title, cfg: {} });
+  });
+}
+var GD_SUB = 'members';
+var CUR_GROUP_CFG = {};
+function renderGroupDetail(g){
+  CUR_GROUP_CFG = g.cfg || {};
+  var html = '<div class="card"><button class="back" onclick="renderGroups()">‹ 返回群列表</button>'
+    + '<h3 class="mt6">👥 '+esc(g.title||('群 '+g.id))+'</h3><div class="small">'+g.id+'</div></div>';
+  html += '<div class="btnrow" style="margin-bottom:10px">'
+    + '<button class="btn'+(GD_SUB==='members'?' accent':'')+'" onclick="gdGo(\'members\')">👥 成员管理</button>'
+    + '<button class="btn'+(GD_SUB==='announce'?' accent':'')+'" onclick="gdGo(\'announce\')">📢 公告</button>'
+    + '<button class="btn'+(GD_SUB==='settings'?' accent':'')+'" onclick="gdGo(\'settings\')">📜 群设置</button>'
+    + '<button class="btn'+(GD_SUB==='advanced'?' accent':'')+'" onclick="gdGo(\'advanced\')">⚙️ 高级功能</button>'
+    + '</div><div id="gd_body"></div>';
+  $('content').innerHTML = html;
+  gdRender();
+}
+function gdGo(sub){ GD_SUB = sub; gdRender(); }
+function gdRender(){
+  var cfg = CUR_GROUP_CFG || {};
+  var gid = CUR_GROUP.id;
+  var html = '';
+  if (GD_SUB === 'members') {
+    html += '<div class="card"><h3>🎯 目标用户</h3>'
+      + '<div class="desc">输入用户数字 ID 或 @用户名（@用户名需该用户有警告/封禁记录才能解析）</div>'
+      + '<input type="text" id="tgTarget" placeholder="如 123456789 或 @username">'
+      + '<button class="btn accent full" onclick="loadCandidates()">从警告 / 封禁记录选择</button>'
+      + '<div id="candList"></div></div>';
+    html += '<div class="card"><h3>⚙️ 操作</h3><div class="ops" id="opsGrid"></div></div>';
+    $('gd_body').innerHTML = html;
+    renderOps();
+    loadCandidates(true);
+    return;
+  }
+  if (GD_SUB === 'announce') {
+    html += '<div class="card"><h3>📢 发布公告（自动置顶）</h3>'
+      + '<textarea id="annText" placeholder="公告内容（支持 Markdown）"></textarea>'
+      + '<label class="f">按钮（可选）：每行一个，多个用 &amp;&amp; 分隔，格式：名称-链接</label>'
+      + '<textarea id="annBtns" placeholder="进群-https://t.me/xxx&#10;官网-https://example.com"></textarea>'
+      + '<button class="btn accent full mt6" onclick="sendAnnounce('+gid+')">发送并置顶</button></div>';
+    $('gd_body').innerHTML = html;
+    return;
+  }
+  if (GD_SUB === 'settings') {
+    html += '<div class="card"><h3>📜 群规</h3><textarea id="cfgRules" placeholder="群规内容（≤2000字）">'+esc(cfg.rules||'')+'</textarea>'
+      + '<button class="btn sm full" onclick="saveGroupCfg(\'rules\')">保存群规</button></div>';
+    html += '<div class="card"><h3>👋 欢迎语</h3><textarea id="cfgWelcome" placeholder="进群欢迎语（发送 off 关闭）">'+esc(cfg.welcome||'')+'</textarea>'
+      + '<button class="btn sm full" onclick="saveGroupCfg(\'welcome\')">保存欢迎语</button></div>';
+    html += '<div class="card"><h3>🔒 全员禁言</h3><div class="btnrow">'
+      + '<button class="btn warn" onclick="doAction(\'lock\')">🔒 全员禁言</button>'
+      + '<button class="btn ok" onclick="doAction(\'unlock\')">🔓 解除</button></div>'
+      + (cfg.lock ? '<div class="small mt6" style="color:var(--warn)">当前：全员禁言已开启</div>' : '<div class="small mt6">当前：正常发言</div>')
+      + '</div>';
+    $('gd_body').innerHTML = html;
+    return;
+  }
+  if (GD_SUB === 'advanced') {
+    html += '<div class="card"><h3>⚙️ 高级功能</h3><div class="desc">积分 / 夜间禁言 / 防刷屏 / 自动删除 / 屏蔽规则（当前群：'+esc(CUR_GROUP.title||gid)+'，无需再选群）</div><div id="fg_body"><div class="empty">加载中…</div></div></div>';
+    $('gd_body').innerHTML = html;
+    featGroupLoad(gid);
+    return;
+  }
+}
+
+function renderOps(){
+  var ops = [
+    ['mute10','禁言10分','warn'], ['mute60','禁言60分','warn'], ['unmute','解除禁言','ok'],
+    ['kick','踢出','err'], ['ban','封禁','err'], ['unban','解封','ok'],
+    ['warn','警告+1','warn'], ['unwarn','撤销警告',''], ['warns','查警告',''],
+  ];
+  var html = '';
+  ops.forEach(function(o){ html += '<button class="btn '+o[2]+'" onclick="doAction(\''+o[0]+'\')">'+o[1]+'</button>'; });
+  $('opsGrid').innerHTML = html;
+}
+
+function getTarget(){
+  var v = ($('tgTarget') && $('tgTarget').value || '').trim();
+  if (!v) { toast('请先输入目标用户', 'warn'); return null; }
+  return v;
+}
+function doAction(a){
+  var isGroupWide = (a==='lock'||a==='unlock');
+  var t = isGroupWide ? '' : getTarget();
+  if (!isGroupWide && !t) return;
+  var mins = a==='mute10' ? 10 : (a==='mute60' ? 60 : null);
+  var action = a==='mute10'||a==='mute60' ? 'mute' : a;
+  var confirmText = { kick:'确认踢出该用户？', ban:'确认封禁并移出？', unban:'确认解除封禁？', mute:'确认禁言？', unmute:'确认解除禁言？', warn:'确认警告该用户？', unwarn:'确认撤销警告？', lock:'确认全员禁言？', unlock:'确认解除全员禁言？' }[action] || '确认执行？';
+  if (action==='warns') { queryWarns(t); return; }
+  var targetPart = isGroupWide ? '' : '<br><br>目标：<b>'+esc(t)+'</b>';
+  confirmDlg('操作确认', confirmText + targetPart, function(){
+    var body = { initData: INIT, action: action, chatId: CUR_GROUP.id };
+    if (!isGroupWide) { body.target = t; body.name = t; }
+    if (mins) body.minutes = mins;
+    api('/app/api/action', body, function(d){ toast((d&&d.message)||(d&&d.error)||'操作完成', d&&d.ok?'ok':'err'); });
+  });
+}
+function queryWarns(t){
+  api('/app/api/warns', { initData: INIT, chatId: CUR_GROUP.id, target: t }, function(d){
+    if (!d || !d.ok) { toast((d&&d.error)||'查询失败', 'err'); return; }
+    toast('用户 '+(d.name||t)+' 当前警告：'+d.count+' 次', d.count>0?'warn':'ok');
+  });
+}
+function loadCandidates(silent){
+  api('/app/api/members', { initData: INIT, chatId: CUR_GROUP.id }, function(d){
+    if (!d || !d.ok) return;
+    var html = '';
+    if (d.warns && d.warns.length) {
+      html += '<div class="small mt6">警告记录：</div>';
+      d.warns.forEach(function(w){ html += '<div class="row" onclick="pickCand('+w.id+')"><div class="t"><div class="n">用户 '+w.id+'</div><div class="s">警告 '+w.count+' 次</div></div><div class="arrow">选</div></div>'; });
+    }
+    if (d.bannedLog && d.bannedLog.length) {
+      html += '<div class="small mt6">封禁/禁言记录：</div>';
+      d.bannedLog.forEach(function(b){ html += '<div class="row" onclick="pickCand('+b.id+')"><div class="t"><div class="n">'+esc(b.name)+'</div><div class="s">'+b.id+' · '+(b.type==='mute'?'禁言':'封禁')+'</div></div><div class="arrow">选</div></div>'; });
+    }
+    if (!html) html = '<div class="small mt6" style="color:var(--sub)">暂无警告/封禁记录</div>';
+    $('candList').innerHTML = html;
+  });
+}
+function pickCand(id){
+  if ($('tgTarget')) $('tgTarget').value = id;
+  toast('已选择用户 '+id, 'ok');
+}
+function saveGroupCfg(field){
+  var val = field==='rules' ? $('cfgRules').value : $('cfgWelcome').value;
+  api('/app/api/chats', { initData: INIT }, function(d){
+    var g = null; (d.groups||[]).forEach(function(x){ if (String(x.id)===String(CUR_GROUP.id)) g = x; });
+    var cfg = (g && g.cfg) || {};
+    if (field==='rules') cfg.rules = val; else cfg.welcome = val;
+    api('/app/api/action', { initData: INIT, action: 'saveConfig', chatId: CUR_GROUP.id, key: 'group_cfg:'+CUR_GROUP.id, value: cfg }, function(r){
+      toast((r&&r.message)||(r&&r.error)||'已保存', r&&r.ok?'ok':'err');
+    });
+  });
+}
+function sendAnnounce(chatId){
+  var text = $('annText').value.trim();
+  if (!text) { toast('公告内容不能为空', 'warn'); return; }
+  var btns = $('annBtns').value.trim();
+  confirmDlg('发送公告', '确认发送公告到该群/频道并置顶？'+(btns?'<br><br>附带按钮：<br><pre style="white-space:pre-wrap">'+esc(btns)+'</pre>':''), function(){
+    api('/app/api/action', { initData: INIT, action: 'announce', chatId: chatId, text: text, buttons: btns }, function(d){
+      toast((d&&d.message)||(d&&d.error)||'完成', d&&d.ok?'ok':'err');
+      if (d&&d.ok) { $('annText').value=''; $('annBtns').value=''; }
+    });
+  });
+}
+
+/* ================= 频道管理 ================= */
+var CUR_CHANNEL = null;
+function renderChannels(){
+  api('/app/api/chats', { initData: INIT }, function(d){
+    if (!d || !d.ok) { $('content').innerHTML = '<div class="empty">加载失败</div>'; return; }
+    var html = '<div class="card"><h3>📢 频道管理</h3><div class="desc">选择频道进行管理（共 '+d.channels.length+' 个）</div></div>';
+    if (!d.channels.length) html += '<div class="empty">Bot 尚未加入任何频道，请先把 bot 拉进频道并设为管理员</div>';
+    d.channels.forEach(function(c){
+      html += '<div class="card row" onclick="openChannel('+c.id+',\''+esc(c.title||('频道 '+c.id)).replace(/'/g,'\\\'')+'\')"><div class="t"><div class="n">📢 '+esc(c.title||('频道 '+c.id))+'</div><div class="s">'+c.id+'</div></div><div class="arrow">›</div></div>';
+    });
+    $('content').innerHTML = html;
+  });
+}
+var CD_SUB = 'announce';
+function openChannel(id, title){
+  CUR_CHANNEL = { id: id, title: title };
+  var html = '<div class="card"><button class="back" onclick="renderChannels()">‹ 返回频道列表</button>'
+    + '<h3 class="mt6">📢 '+esc(title)+'</h3><div class="small">'+id+'</div></div>';
+  html += '<div class="btnrow" style="margin-bottom:10px">'
+    + '<button class="btn'+(CD_SUB==='announce'?' accent':'')+'" onclick="cdGo(\'announce\')">📢 公告</button>'
+    + '<button class="btn'+(CD_SUB==='settings'?' accent':'')+'" onclick="cdGo(\'settings\')">⚙️ 频道设置</button>'
+    + '</div><div id="cd_body"></div>';
+  $('content').innerHTML = html;
+  cdRender();
+}
+function cdGo(sub){ CD_SUB = sub; cdRender(); }
+function cdRender(){
+  var cid = CUR_CHANNEL.id;
+  var html = '';
+  if (CD_SUB === 'announce') {
+    html += '<div class="card"><h3>📢 发布公告（自动置顶）</h3>'
+      + '<textarea id="annText" placeholder="公告内容（支持 Markdown）"></textarea>'
+      + '<label class="f">按钮（可选）：每行一个，多个用 &amp;&amp; 分隔，格式：名称-链接</label>'
+      + '<textarea id="annBtns" placeholder="进群-https://t.me/xxx&#10;官网-https://example.com"></textarea>'
+      + '<button class="btn accent full mt6" onclick="sendAnnounce('+cid+')">发送并置顶</button></div>';
+  } else if (CD_SUB === 'settings') {
+    html += '<div class="card"><h3>⚙️ 频道设置</h3><div class="desc">评论沙发 / 自动删除系统消息 / 频道屏蔽 / 控制权限 / 人数趋势（当前频道：'+esc(CUR_CHANNEL.title||cid)+'，无需再选频道）</div><div id="fc_body"><div class="empty">加载中…</div></div></div>';
+  }
+  $('cd_body').innerHTML = html;
+  if (CD_SUB === 'settings') featChannelLoad(cid);
+}
+
+/* ================= 抽奖 ================= */
+function renderLotteries(){
+  api('/app/api/lotteries', { initData: INIT }, function(d){
+    if (!d || !d.ok) { $('content').innerHTML = '<div class="empty">加载失败</div>'; return; }
+    var html = '<div class="card"><h3>🎲 抽奖'+(IS_ADMIN?'（全部群）':'（我参与的）')+'</h3><div class="desc">共 '+d.lotteries.length+' 条</div>'
+      + (IS_ADMIN ? '<button class="btn accent full mt6" onclick="showLotteryCreate()">✨ 发起抽奖</button>' : '')
+      + '</div>';
+    if (!d.lotteries.length) html += '<div class="empty">暂无记录</div>';
+    d.lotteries.forEach(function(l){
+      var st = l.status==='active' ? '<span class="tag active">进行中</span>' : (l.status==='cancelled' ? '<span class="tag cancelled">已取消</span>' : '<span class="tag ended">已开奖</span>');
+      html += '<div class="card"><div class="row" style="cursor:default"><div class="t"><div class="n">'+st+' '+esc(l.name)+'</div>'
+        + '<div class="s">'+esc(l.group)+'</div></div></div>';
+      if (IS_ADMIN) {
+        html += '<div class="kv"><span class="k">参与 / 中奖</span><span>'+l.participants+' / '+l.winners+'</span></div>'
+          + (l.prize?'<div class="kv"><span class="k">奖品</span><span>'+esc(l.prize)+'</span></div>':'')
+          + '<button class="btn full mt6" onclick="showLotteryDetail(\''+l.id+'\')">📋 详情 / 开奖</button>';
+      } else {
+        html += '<div class="kv"><span class="k">我的状态</span><span>'+(l.won?'<b style="color:var(--warn)">🏆 中奖：'+esc(l.prize||'')+'</b>':'未中奖')+'</span></div>';
+      }
+      html += '</div>';
+    });
+    $('content').innerHTML = html;
+  });
+}
+
+var LOTTERY_GROUPS = [];
+function showLotteryCreate(){
+  var html = '<div class="card"><h3>✨ 发起抽奖</h3><div class="desc">填写信息后发布到指定群</div></div>'
+    + '<div class="card">'
+    + '<div class="field"><label>发布群</label><select id="lc_group"><option value="">加载中…</option></select></div>'
+    + '<div class="field"><label>抽奖名称</label><input id="lc_name" placeholder="如：周末福利抽奖"></div>'
+    + '<div class="field"><label>奖品（多奖品用换行分隔）</label><textarea id="lc_prize" rows="3" placeholder="如：1000G 流量&#10;30天会员"></textarea></div>'
+    + '<div class="field"><label>中奖名额</label><input id="lc_winners" type="number" value="1" min="1"></div>'
+    + '<div class="field"><label>参与口令（群内发送此词参与）</label><input id="lc_keyword" value="抽奖"></div>'
+    + '<div class="field"><label>开奖方式</label><select id="lc_trigger"><option value="manual">🎲 手动开奖</option><option value="count">👥 满 X 人自动开奖</option><option value="time">⏰ 定时开奖</option></select></div>'
+    + '<div class="field" id="lc_count_box" style="display:none"><label>满多少人开奖</label><input id="lc_count" type="number" value="10" min="2"></div>'
+    + '<div class="field" id="lc_time_box" style="display:none"><label>开奖时间（本地时间）</label><input id="lc_time" type="datetime-local"></div>'
+    + '<div class="field"><label><input id="lc_codes" type="checkbox"> 使用兑奖码（开奖后私信中奖者）</label></div>'
+    + '<div class="field" id="lc_codes_box" style="display:none"><label>兑奖码（每行一个）</label><textarea id="lc_codes_text" rows="3" placeholder="每行一个兑奖码"></textarea></div>'
+    + '<button class="btn accent full mt6" onclick="submitLotteryCreate()">🚀 发布抽奖</button>'
+    + '<button class="btn full mt6" onclick="renderLotteries()">⬅️ 返回</button>'
+    + '</div>';
+  $('content').innerHTML = html;
+  var tg = $('lc_trigger');
+  tg.onchange = function(){
+    $('lc_count_box').style.display = tg.value==='count' ? '' : 'none';
+    $('lc_time_box').style.display = tg.value==='time' ? '' : 'none';
+  };
+  $('lc_codes').onchange = function(){ $('lc_codes_box').style.display = this.checked ? '' : 'none'; };
+  api('/app/api/chats', { initData: INIT }, function(d){
+    if (d && d.ok && d.groups) {
+      LOTTERY_GROUPS = d.groups;
+      var opts = '<option value="">请选择群</option>' + d.groups.map(function(g){ return '<option value="'+g.id+'">'+esc(g.title)+'</option>'; }).join('');
+      $('lc_group').innerHTML = opts;
+    } else {
+      $('lc_group').innerHTML = '<option value="">无可用群</option>';
+    }
+  });
+}
+function submitLotteryCreate(){
+  var gid = $('lc_group').value;
+  var name = $('lc_name').value.trim();
+  var prize = $('lc_prize').value.trim();
+  if (!gid) return toast('请选择发布群');
+  if (!name) return toast('请填写抽奖名称');
+  if (!prize) return toast('请填写奖品');
+  var triggerType = $('lc_trigger').value;
+  var triggerValue = 0;
+  if (triggerType === 'count') triggerValue = parseInt($('lc_count').value, 10) || 10;
+  if (triggerType === 'time') {
+    var tv = $('lc_time').value;
+    if (!tv) return toast('请选择开奖时间');
+    triggerValue = new Date(tv).getTime();
+  }
+  var useCodes = $('lc_codes').checked;
+  var body = {
+    groupId: parseInt(gid, 10), name: name, prize: prize,
+    winnerCount: parseInt($('lc_winners').value, 10) || 1,
+    keyword: $('lc_keyword').value.trim() || '抽奖',
+    triggerType: triggerType, triggerValue: triggerValue,
+    useCodes: useCodes, codes: useCodes ? $('lc_codes_text').value : ''
+  };
+  api('/app/api/lottery-create', body, function(d){
+    if (d && d.ok) {
+      toast('✅ 抽奖已发布');
+      renderLotteries();
+    } else {
+      toast('❌ ' + (d && d.error || '创建失败'));
+    }
+  });
+}
+function showLotteryDetail(id){
+  api('/app/api/lottery-detail', { lotteryId: id }, function(d){
+    if (!d || !d.ok) { toast('加载失败'); return; }
+    var l = d.lottery;
+    var st = l.status==='active' ? '<span class="tag active">进行中</span>' : (l.status==='cancelled' ? '<span class="tag cancelled">已取消</span>' : '<span class="tag ended">已开奖</span>');
+    var trig = l.triggerType==='time' ? '⏰ '+fmtT(l.triggerValue) : (l.triggerType==='count' ? '👥 满 '+l.triggerValue+' 人' : '🎲 手动');
+    var html = '<div class="card"><h3>'+st+' '+esc(l.name)+'</h3><div class="desc">'+esc(l.group)+' · 口令 '+esc(l.keyword)+'</div></div>'
+      + '<div class="card">'
+      + '<div class="kv"><span class="k">奖品</span><span>'+esc(l.prizes && l.prizes.length ? l.prizes.join(' / ') : l.prize)+'</span></div>'
+      + '<div class="kv"><span class="k">开奖方式</span><span>'+trig+'</span></div>'
+      + '<div class="kv"><span class="k">中奖名额</span><span>'+l.winnerCount+' 人</span></div>'
+      + '<div class="kv"><span class="k">参与人数</span><span>'+l.participants.length+' 人</span></div>'
+      + (l.useCodes ? '<div class="kv"><span class="k">兑奖码</span><span>'+l.codes.length+' 个（已用 '+l.codesUsed.length+'）</span></div>' : '')
+      + '</div>';
+    if (l.participants.length) {
+      html += '<div class="card"><h3>👥 参与名单 ('+l.participants.length+')</h3>' + l.participants.slice(0, 100).map(function(p){ return '<div class="kv"><span class="k">'+esc(p.name)+'</span><span>'+p.id+'</span></div>'; }).join('') + '</div>';
+    }
+    if (l.winners.length) {
+      html += '<div class="card"><h3>🏆 中奖名单</h3>' + l.winners.map(function(p){ return '<div class="kv"><span class="k">'+esc(p.name)+'</span><span>'+p.id+'</span></div>'; }).join('') + '</div>';
+    }
+    if (l.status === 'active') {
+      html += '<button class="btn accent full mt6" onclick="doLotteryAction(\'draw\',\''+l.id+'\')">🎲 立即开奖</button>'
+        + '<button class="btn full mt6" onclick="doLotteryAction(\'cancel\',\''+l.id+'\')">❌ 取消抽奖</button>';
+    }
+    html += '<button class="btn full mt6" onclick="renderLotteries()">⬅️ 返回列表</button>';
+    $('content').innerHTML = html;
+  });
+}
+function doLotteryAction(action, id){
+  if (action === 'draw' && !confirm('确认立即开奖？')) return;
+  if (action === 'cancel' && !confirm('确认取消抽奖？参与者将收到通知')) return;
+  api('/app/api/lottery-' + action, { lotteryId: id }, function(d){
+    if (d && d.ok) { toast('✅ ' + (d.message || '操作成功')); renderLotteries(); }
+    else toast('❌ ' + (d && d.error || '操作失败'));
+  });
+}
+function fmtT(ts){
+  var d = new Date(ts), p = function(x){ return String(x).padStart(2,'0'); };
+  return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+' '+p(d.getHours())+':'+p(d.getMinutes());
+}
+
+/* ================= TGBot 功能中心 ================= */
+var FEAT_SUB = 'home';
+function renderFeat(){
+  var html = '<div class="card"><h3>🤖 功能中心</h3><div class="desc">定时消息 / 关键词回复 / 群功能 / 群统计 / 频道同步 / 权限控制 / 邀请链接</div><div class="btnrow">'
+    + '<button class="btn'+(FEAT_SUB==='sched'?' accent':'')+'" onclick="featGo(\'sched\')">⏰ 定时消息</button>'
+    + '<button class="btn'+(FEAT_SUB==='keywords'?' accent':'')+'" onclick="featGo(\'keywords\')">💬 关键词回复</button>'
+    + '<button class="btn'+(FEAT_SUB==='group'?' accent':'')+'" onclick="featGo(\'group\')">⚙️ 群功能</button>'
+    + '<button class="btn'+(FEAT_SUB==='perm'?' accent':'')+'" onclick="featGo(\'perm\')">🔒 权限控制</button>'
+    + '<button class="btn'+(FEAT_SUB==='stats'?' accent':'')+'" onclick="featGo(\'stats\')">📈 群统计</button>'
+    + '<button class="btn'+(FEAT_SUB==='sync'?' accent':'')+'" onclick="featGo(\'sync\')">🔁 频道同步</button>'
+    + '<button class="btn'+(FEAT_SUB==='invite'?' accent':'')+'" onclick="featGo(\'invite\')">🔗 邀请系统</button>'
+    + '<button class="btn'+(FEAT_SUB==='alias'?' accent':'')+'" onclick="featGo(\'alias\')">🗂 命令别名</button>'
+    + '<button class="btn'+(FEAT_SUB==='channel'?' accent':'')+'" onclick="featGo(\'channel\')">📡 频道功能</button>'
+    + '</div></div><div id="feat_body"></div>';
+  $('content').innerHTML = html;
+  if (FEAT_SUB === 'sched') featSched();
+  else if (FEAT_SUB === 'keywords') featKeywords();
+  else if (FEAT_SUB === 'group') featGroup();
+  else if (FEAT_SUB === 'perm') featPerm();
+  else if (FEAT_SUB === 'stats') featStats();
+  else if (FEAT_SUB === 'sync') featSync();
+  else if (FEAT_SUB === 'invite') featInvite();
+  else if (FEAT_SUB === 'alias') featAlias();
+  else if (FEAT_SUB === 'channel') featChannel();
+}
+function featGo(sub){ FEAT_SUB = sub; renderFeat(); }
+
+/* --- 定时消息 --- */
+function featSched(){
+  api('/app/api/tg-features/scheduled', { initData: INIT }, function(d){
+    var html = '<div class="card"><h3>⏰ 定时消息</h3><div class="desc">按固定间隔向指定群/频道自动发送消息（立即到期，下个调度周期发送）</div>'
+      + '<div class="field"><label>目标群/频道 ID（负数，如 -1001234567890）</label><input id="fs_chat" placeholder="-1001234567890"></div>'
+      + '<div class="field"><label>消息内容</label><input id="fs_text" placeholder="要定时发送的内容"></div>'
+      + '<div class="field"><label>间隔（分钟）</label><input id="fs_int" type="number" min="1" value="60"></div>'
+      + '<button class="btn accent full" onclick="featSchedAdd()">➕ 添加定时消息</button></div>';
+    var list = (d && d.ok && d.list) || [];
+    html += '<div class="card"><h3>已配置（'+list.length+'）</h3>';
+    if (!list.length) html += '<div class="empty">暂无定时消息</div>';
+    list.forEach(function(s){
+      html += '<div class="kv"><span class="k">#'+s.id+' → '+esc(s.chatId)+'</span><span>每 '+s.intervalMinutes+' 分钟 · '+(s.enabled?'<span style="color:var(--ok)">● 开</span>':'<span style="color:var(--sub)">○ 关</span>')+'</span></div>'
+        + '<div class="small" style="margin:2px 0 6px">'+esc(s.text)+'</div>'
+        + '<div class="btnrow"><button class="btn sm" onclick="featSchedToggle('+s.id+','+(s.enabled?0:1)+')">'+(s.enabled?'⏸ 暂停':'▶️ 启用')+'</button>'
+        + '<button class="btn sm err" onclick="featSchedDel('+s.id+')">🗑 删除</button></div>';
+    });
+    html += '</div>';
+    $('feat_body').innerHTML = html;
+  });
+}
+function featSchedAdd(){
+  var chatId = $('fs_chat').value.trim(), text = $('fs_text').value.trim(), int = parseInt($('fs_int').value, 10);
+  if (!chatId || !text || !int || int < 1) { toast('请填写完整（间隔≥1分钟）', 'err'); return; }
+  api('/app/api/tg-features/scheduled-add', { initData: INIT, chatId: parseInt(chatId, 10), text: text, intervalMinutes: int }, function(d){
+    if (d && d.ok) { toast('✅ ' + (d.message || '已添加')); featSched(); }
+    else toast('❌ ' + (d && d.error || '添加失败'));
+  });
+}
+function featSchedToggle(id, en){ api('/app/api/tg-features/scheduled-toggle', { initData: INIT, id: id, enabled: !!en }, function(d){ if (d && d.ok) { toast('已更新'); featSched(); } else toast('❌ 操作失败'); }); }
+function featSchedDel(id){ if (!confirm('确认删除该定时消息？')) return; api('/app/api/tg-features/scheduled-del', { initData: INIT, id: id }, function(d){ if (d && d.ok) { toast('✅ 已删除'); featSched(); } else toast('❌ 删除失败'); }); }
+
+/* --- 关键词回复 --- */
+function featKeywords(){
+  api('/app/api/tg-features/keywords', { initData: INIT, chatId: FEAT_CHAT_ID || 0 }, function(d){
+    var html = '<div class="card"><h3>💬 关键词回复</h3><div class="desc">群成员发言包含关键词时自动回复（勿与抽奖口令重复，命中后不再触发口令）</div>'
+      + '<div class="field"><label>目标群 ID（负数）</label><input id="fk_chat" value="'+(FEAT_CHAT_ID||'')+'" placeholder="-1001234567890"></div>'
+      + '<div class="field"><label>关键词</label><input id="fk_kw" placeholder="触发词"></div>'
+      + '<div class="field"><label>回复内容</label><input id="fk_rp" placeholder="自动回复的文字"></div>'
+      + '<button class="btn accent full" onclick="featKwAdd()">➕ 添加关键词</button></div>';
+    var list = (d && d.ok && d.list) || [];
+    html += '<div class="card"><h3>已配置（'+list.length+'）</h3>';
+    if (!list.length) html += '<div class="empty">暂无关键词</div>';
+    list.forEach(function(k){
+      html += '<div class="kv"><span class="k">「'+esc(k.keyword)+'」</span><span>'+(k.enabled?'<span style="color:var(--ok)">● 开</span>':'<span style="color:var(--sub)">○ 关</span>')+'</span></div>'
+        + '<div class="small" style="margin:2px 0 6px">↳ '+esc(k.reply)+'</div>'
+        + '<div class="btnrow"><button class="btn sm" onclick="featKwToggle('+k.id+','+(k.enabled?0:1)+')">'+(k.enabled?'⏸ 停用':'▶️ 启用')+'</button>'
+        + '<button class="btn sm err" onclick="featKwDel('+k.id+')">🗑 删除</button></div>';
+    });
+    html += '</div>';
+    $('feat_body').innerHTML = html;
+  });
+}
+function featKwAdd(){
+  var chatId = parseInt($('fk_chat').value.trim(), 10), kw = $('fk_kw').value.trim(), rp = $('fk_rp').value.trim();
+  if (!chatId || !kw || !rp) { toast('请填写完整（群ID/关键词/回复）', 'err'); return; }
+  api('/app/api/tg-features/keyword-add', { initData: INIT, chatId: chatId, keyword: kw, reply: rp }, function(d){
+    if (d && d.ok) { toast('✅ ' + (d.message || '已添加')); featKeywords(); }
+    else toast('❌ ' + (d && d.error || '添加失败'));
+  });
+}
+function featKwToggle(id, en){ api('/app/api/tg-features/keyword-toggle', { initData: INIT, id: id, enabled: !!en }, function(d){ if (d && d.ok) { toast('已更新'); featKeywords(); } else toast('❌ 操作失败'); }); }
+function featKwDel(id){ if (!confirm('确认删除该关键词？')) return; api('/app/api/tg-features/keyword-del', { initData: INIT, id: id }, function(d){ if (d && d.ok) { toast('✅ 已删除'); featKeywords(); } else toast('❌ 删除失败'); }); }
+
+/* --- 群功能设置 --- */
+var FEAT_CHAT_ID = null;
+function featGroup(){
+  api('/app/api/tg-features/overview', { initData: INIT }, function(d){
+    var html = '<div class="card"><h3>⚙️ 群功能设置</h3><div class="field"><label>选择群</label><select id="fg_sel" onchange="featGroupLoad(this.value)"><option value="">— 选择群 —</option>';
+    (d && d.ok ? d.groups : []).forEach(function(g){ html += '<option value="'+g.id+'"'+(FEAT_CHAT_ID===g.id?' selected':'')+'>'+esc(g.title)+' ('+g.id+')</option>'; });
+    html += '</select></div>'
+      + '<div class="card" style="margin:10px 0"><div style="font-size:13px;font-weight:600;margin-bottom:6px">🎛 增减积分（管理员）</div>'
+      + '<div class="btnrow"><input id="fg_puid" placeholder="用户 ID" style="width:40%"><input id="fg_pdelta" type="number" placeholder="±积分" style="width:30%"><button class="btn accent" onclick="featPointsAdjust()">调整</button></div>'
+      + '<div class="desc" style="margin-top:6px">给成员加/减积分：填用户 ID（数字）和数量（如 10 或 -10），或直接在群里用 /givepoints @用户名 数量</div></div>'
+      + '<div id="fg_body"><div class="empty">请选择群后加载配置</div></div></div>';
+    $('feat_body').innerHTML = html;
+    if (FEAT_CHAT_ID) featGroupLoad(FEAT_CHAT_ID);
+  });
+}
+function featPointsAdjust(){
+  var chatId = FEAT_CHAT_ID, uid = parseInt($('fg_puid').value.trim(), 10), delta = parseInt($('fg_pdelta').value.trim(), 10);
+  if (!chatId || !uid || !delta) { toast('请选择群并填写用户 ID 与积分数量', 'err'); return; }
+  api('/app/api/tg-features/points-adjust', { initData: INIT, chatId: chatId, userId: uid, delta: delta }, function(d){
+    if (d && d.ok) { toast('✅ ' + (d.message || '积分已更新')); $('fg_puid').value=''; $('fg_pdelta').value=''; }
+    else toast('❌ ' + (d && d.error || '调整失败'));
+  });
+}
+function featGroupLoad(chatId){
+  FEAT_CHAT_ID = Number(chatId);
+  if (!FEAT_CHAT_ID) return;
+  api('/app/api/tg-features/config', { initData: INIT, chatId: FEAT_CHAT_ID }, function(d){
+    var cfg = (d && d.ok && d.cfg) || {};
+    var p = cfg.points || {}, nm = cfg.newMember || {}, nt = cfg.nightMode || {}, as = cfg.antispam || {}, ad = cfg.autoDelete || {}, fl = cfg.flood || {};
+    var cc = cfg.chatCheck || {}, blk = cfg.block || {}, ed = cfg.edited || {}, sg = cfg.switchGroup || {}, ads = cfg.autoDeleteSys || {};
+    var whitelist = (as.whitelist || []).join(',');
+    var nickForbid = (cc.nickForbid || []).join(',');
+    var html = '<div class="field"><label><input type="checkbox" id="fg_en"'+(cfg.enabled!==false?' checked':'')+'> 本群功能总开关（关闭后积分/关键词/自动删除等全部停用）</label></div>'
+      + '<div class="card" style="margin:10px 0"><div style="font-size:13px;font-weight:600;margin-bottom:6px">⭐ 积分规则</div>'
+      + '<div class="field"><label><input type="checkbox" id="fg_pts"'+(p.enabled!==false?' checked':'')+'> 群活跃积分（发言得分）</label></div>'
+      + '<div class="field"><label>每日积分上限</label><input id="fg_ptsCap" type="number" min="1" value="'+(p.dailyCap||100)+'"></div>'
+      + '<div class="field"><label>最小发言字数（0=不限）</label><input id="fg_ptsMinLen" type="number" min="0" value="'+(p.minLen||0)+'"></div>'
+      + '<div class="field"><label>签到积分（/sign_in 或别名，每日一次）</label><input id="fg_signPts" type="number" min="0" value="'+(p.signIn||5)+'"></div>'
+      + '<div class="field"><label>邀请 1 人积分（0=不奖励，需开启邀请系统）</label><input id="fg_invPts" type="number" min="0" value="'+(p.invite||0)+'"></div></div>'
+      + '<div class="field"><label><input type="checkbox" id="fg_nm"'+(nm.enabled?' checked':'')+'> 新成员限制发言</label><input id="fg_nmMin" type="number" min="1" value="'+(nm.minutes||10)+'" style="margin-top:6px" placeholder="限制分钟"></div>'
+      + '<div class="field"><label><input type="checkbox" id="fg_nt"'+(nt.enabled?' checked':'')+'> 夜间全员禁言</label></div>'
+      + '<div class="field"><label>夜间时段（开始 结束，24小时制）</label><div class="btnrow"><input id="fg_ntS" value="'+(nt.start||'22:00')+'" placeholder="22:00" style="width:45%"><input id="fg_ntE" value="'+(nt.end||'07:00')+'" placeholder="07:00" style="width:45%"></div></div>'
+      + '<div class="field"><label><input type="checkbox" id="fg_as"'+(as.enabled!==false?' checked':'')+'> 闪进闪退屏蔽（加入后短时退出自动封禁）</label></div>'
+      + '<div class="field"><label>闪退判定秒数</label><input id="fg_asSec" type="number" min="5" value="'+(as.withinSec||60)+'"></div>'
+      + '<div class="card" style="margin:10px 0"><div style="font-size:13px;font-weight:600;margin-bottom:6px">🗑 自动删除规则（管理员豁免）</div>'
+      + '<div class="field"><label><input type="checkbox" id="fg_adPhoto"'+(ad.photo?' checked':'')+'> 删除图片消息</label></div>'
+      + '<div class="field"><label><input type="checkbox" id="fg_adVideo"'+(ad.video?' checked':'')+'> 删除视频消息</label></div>'
+      + '<div class="field"><label><input type="checkbox" id="fg_adDoc"'+(ad.document?' checked':'')+'> 删除文件消息</label></div>'
+      + '<div class="field"><label><input type="checkbox" id="fg_adFwd"'+(ad.forward?' checked':'')+'> 删除转发消息</label></div>'
+      + '<div class="field"><label><input type="checkbox" id="fg_adLink"'+(ad.link?' checked':'')+'> 删除含链接消息</label></div></div>'
+      + '<div class="card" style="margin:10px 0"><div style="font-size:13px;font-weight:600;margin-bottom:6px">🛡 系统消息自动删除（服务消息）</div>'
+      + '<div class="field"><label><input type="checkbox" id="fg_adsJoin"'+(ads.join!==false?' checked':'')+'> 删除进群消息</label></div>'
+      + '<div class="field"><label><input type="checkbox" id="fg_adsLeave"'+(ads.leave!==false?' checked':'')+'> 删除退群消息</label></div>'
+      + '<div class="field"><label><input type="checkbox" id="fg_adsPin"'+(ads.pin!==false?' checked':'')+'> 删除置顶消息</label></div></div>'
+      + '<div class="card" style="margin:10px 0"><div style="font-size:13px;font-weight:600;margin-bottom:6px">🔁 防刷屏（发言频率限制）</div>'
+      + '<div class="field"><label><input type="checkbox" id="fg_fl"'+(fl.enabled?' checked':'')+'> 开启防刷屏</label></div>'
+      + '<div class="field"><label>时间窗（秒）</label><input id="fg_flSec" type="number" min="3" value="'+(fl.secs||10)+'"></div>'
+      + '<div class="field"><label>窗口内最大消息数</label><input id="fg_flMax" type="number" min="2" value="'+(fl.max||5)+'"></div></div>'
+      + '<div class="card" style="margin:10px 0"><div style="font-size:13px;font-weight:600;margin-bottom:6px">👀 发言检查（违规禁言 10 分钟，管理员豁免）</div>'
+      + '<div class="field"><label><input type="checkbox" id="fg_ccName"'+(cc.mustUsername?' checked':'')+'> 必须设置用户名才能发言</label></div>'
+      + '<div class="field"><label><input type="checkbox" id="fg_ccAvatar"'+(cc.mustAvatar?' checked':'')+'> 必须设置头像才能发言</label></div>'
+      + '<div class="field"><label>昵称禁止包含（逗号分隔）</label><input id="fg_ccNick" value="'+esc(nickForbid)+'" placeholder="广告,客服"></div>'
+      + '<div class="field"><label>屏蔽超长消息（字数，0=不限）</label><input id="fg_ccLen" type="number" min="0" value="'+(cc.maxMsgLen||0)+'"></div>'
+      + '<div class="field"><label>屏蔽超长昵称（字符数，0=不限）</label><input id="fg_ccNickLen" type="number" min="0" value="'+(cc.maxNickLen||0)+'"></div></div>'
+      + '<div class="card" style="margin:10px 0"><div style="font-size:13px;font-weight:600;margin-bottom:6px">⛔ 屏蔽与编辑检测</div>'
+      + '<div class="field"><label><input type="checkbox" id="fg_blkBot"'+(blk.robots?' checked':'')+'> 屏蔽机器人（新成员是机器人自动封禁）</label></div>'
+      + '<div class="field"><label><input type="checkbox" id="fg_blkLeave"'+(blk.leaveBan?' checked':'')+'> 退群封禁（成员离开即封禁，慎用）</label></div>'
+      + '<div class="field"><label><input type="checkbox" id="fg_edAll"'+(ed.enabled?' checked':'')+'> 禁止编辑消息（编辑后自动删除）</label></div>'
+      + '<div class="field"><label><input type="checkbox" id="fg_edMedia"'+(ed.blockMedia!==false?' checked':'')+'> 禁止编辑为媒体消息</label></div></div>'
+      + '<div class="card" style="margin:10px 0"><div style="font-size:13px;font-weight:600;margin-bottom:6px">🔌 开关群（管理员发关键词触发全员禁言/解除）</div>'
+      + '<div class="field"><label><input type="checkbox" id="fg_sg"'+(sg.enabled?' checked':'')+'> 开启开关群</label></div>'
+      + '<div class="field"><label>开群关键词</label><input id="fg_sgOpenKw" value="'+esc(sg.openKw||'上课')+'" placeholder="上课"></div>'
+      + '<div class="field"><label>开群提示</label><input id="fg_sgOpenMsg" value="'+esc(sg.openMsg||'')+'" placeholder="上课了，开始交易"></div>'
+      + '<div class="field"><label>关群关键词</label><input id="fg_sgCloseKw" value="'+esc(sg.closeKw||'下课')+'" placeholder="下课"></div>'
+      + '<div class="field"><label>关群提示</label><input id="fg_sgCloseMsg" value="'+esc(sg.closeMsg||'')+'" placeholder="今天下课了，明天再来"></div></div>'
+      + '<div class="field"><label>反垃圾白名单（用户 ID，逗号分隔，豁免删除/检查）</label><input id="fg_wl" value="'+esc(whitelist)+'" placeholder="123456,789012"></div>'
+      + '<button class="btn accent full" onclick="featGroupSave()">💾 保存群配置</button>';
+    $('fg_body').innerHTML = html;
+  });
+}
+function featGroupSave(){
+  var cfg = {
+    enabled: $('fg_en').checked,
+    points: { enabled: $('fg_pts').checked, perMsg: 1, dailyCap: parseInt($('fg_ptsCap').value, 10) || 100, minLen: parseInt($('fg_ptsMinLen').value, 10) || 0, signIn: parseInt($('fg_signPts').value, 10) || 0, invite: parseInt($('fg_invPts').value, 10) || 0 },
+    newMember: { enabled: $('fg_nm').checked, minutes: parseInt($('fg_nmMin').value, 10) || 10 },
+    nightMode: { enabled: $('fg_nt').checked, start: $('fg_ntS').value.trim() || '22:00', end: $('fg_ntE').value.trim() || '07:00' },
+    antispam: { enabled: $('fg_as').checked, withinSec: parseInt($('fg_asSec').value, 10) || 60, whitelist: $('fg_wl').value.split(',').map(function(s){ return parseInt(s.trim(), 10); }).filter(function(n){ return n > 0; }) },
+    autoDelete: { photo: $('fg_adPhoto').checked, video: $('fg_adVideo').checked, document: $('fg_adDoc').checked, forward: $('fg_adFwd').checked, link: $('fg_adLink').checked },
+    autoDeleteSys: { join: $('fg_adsJoin').checked, leave: $('fg_adsLeave').checked, pin: $('fg_adsPin').checked },
+    flood: { enabled: $('fg_fl').checked, secs: parseInt($('fg_flSec').value, 10) || 10, max: parseInt($('fg_flMax').value, 10) || 5 },
+    chatCheck: { mustUsername: $('fg_ccName').checked, mustAvatar: $('fg_ccAvatar').checked, nickForbid: $('fg_ccNick').value.split(',').map(function(s){ return s.trim(); }).filter(Boolean), maxMsgLen: parseInt($('fg_ccLen').value, 10) || 0, maxNickLen: parseInt($('fg_ccNickLen').value, 10) || 0 },
+    block: { robots: $('fg_blkBot').checked, leaveBan: $('fg_blkLeave').checked },
+    edited: { enabled: $('fg_edAll').checked, blockAll: $('fg_edAll').checked, blockMedia: $('fg_edMedia').checked },
+    switchGroup: { enabled: $('fg_sg').checked, openKw: $('fg_sgOpenKw').value.trim(), openMsg: $('fg_sgOpenMsg').value.trim(), closeKw: $('fg_sgCloseKw').value.trim(), closeMsg: $('fg_sgCloseMsg').value.trim() }
+  };
+  api('/app/api/tg-features/config-save', { initData: INIT, chatId: FEAT_CHAT_ID, cfg: cfg }, function(d){
+    if (d && d.ok) { toast('✅ 已保存'); featGroupLoad(FEAT_CHAT_ID); }
+    else toast('❌ ' + (d && d.error || '保存失败'));
+  });
+}
+
+/* --- 群统计 --- */
+function featStats(){
+  var html = '<div class="card"><h3>📈 群统计</h3><div class="field"><label>群 ID</label><input id="fs2_chat" placeholder="-1001234567890"></div><button class="btn accent full" onclick="featStatsLoad()">📊 查看统计</button></div><div id="fs2_body"></div>';
+  $('feat_body').innerHTML = html;
+}
+function featStatsLoad(){
+  var chatId = parseInt($('fs2_chat').value.trim(), 10);
+  if (!chatId) { toast('请输入群 ID', 'err'); return; }
+  api('/app/api/tg-features/stats', { initData: INIT, chatId: chatId }, function(d){
+    if (!d || !d.ok) { $('fs2_body').innerHTML = '<div class="empty">加载失败</div>'; return; }
+    var s = d.stats;
+    var html = '<div class="grid">'
+      + '<div class="stat"><div class="v">'+s.members+'</div><div class="l">活跃成员</div></div>'
+      + '<div class="stat"><div class="v">'+s.todayMsgs+'</div><div class="l">今日消息</div></div>'
+      + '<div class="stat"><div class="v">'+s.totalMsgs+'</div><div class="l">累计消息</div></div>'
+      + '<div class="stat"><div class="v">'+s.todayActive+'</div><div class="l">今日活跃</div></div>'
+      + '<div class="stat"><div class="v">'+s.totalPoints+'</div><div class="l">积分总量</div></div>'
+      + '</div><div class="card"><h3>🏆 积分排行 TOP10</h3>';
+    (s.top || []).forEach(function(r){
+      html += '<div class="kv"><span class="k">'+(r.rank<=3?'🥇🥈🥉'.charAt(r.rank-1):r.rank)+' '+esc(r.username||('用户'+r.userId))+'</span><span>'+r.points+' 分 · '+r.totalMsgs+' 条</span></div>';
+    });
+    html += '</div>';
+    $('fs2_body').innerHTML = html;
+  });
+}
+
+/* --- 频道同步 --- */
+function featSync(){
+  api('/app/api/tg-features/syncs', { initData: INIT }, function(d){
+    var html = '<div class="card"><h3>🔁 频道同步</h3><div class="desc">源频道发布新帖自动转发到目标频道/群</div>'
+      + '<div class="field"><label>源频道 ID（负数）</label><input id="fy_src" placeholder="-1001234567890"></div>'
+      + '<div class="field"><label>目标频道/群 ID（多个用逗号分隔）</label><input id="fy_dst" placeholder="-100111,-100222"></div>'
+      + '<button class="btn accent full" onclick="featSyncAdd()">➕ 添加同步</button></div>';
+    var list = (d && d.ok && d.list) || [];
+    html += '<div class="card"><h3>已配置（'+list.length+'）</h3>';
+    if (!list.length) html += '<div class="empty">暂无同步规则</div>';
+    list.forEach(function(s){
+      html += '<div class="kv"><span class="k">#'+s.id+' '+esc(String(s.sourceChatId))+' →</span><span>'+(s.enabled?'<span style="color:var(--ok)">● 开</span>':'<span style="color:var(--sub)">○ 关</span>')+'</span></div>'
+        + '<div class="small" style="margin:2px 0 6px">目标：'+(s.targetChatIds||[]).map(esc).join('、')+'</div>'
+        + '<div class="btnrow"><button class="btn sm" onclick="featSyncToggle('+s.id+','+(s.enabled?0:1)+')">'+(s.enabled?'⏸ 停用':'▶️ 启用')+'</button>'
+        + '<button class="btn sm err" onclick="featSyncDel('+s.id+')">🗑 删除</button></div>';
+    });
+    html += '</div>';
+    $('feat_body').innerHTML = html;
+  });
+}
+function featSyncAdd(){
+  var src = parseInt($('fy_src').value.trim(), 10), dst = $('fy_dst').value.trim().split(',').map(function(x){ return parseInt(x.trim(), 10); }).filter(function(x){ return x; });
+  if (!src || !dst.length) { toast('请填写源频道与目标ID', 'err'); return; }
+  api('/app/api/tg-features/sync-add', { initData: INIT, sourceChatId: src, targetChatIds: dst }, function(d){
+    if (d && d.ok) { toast('✅ ' + (d.message || '已添加')); featSync(); }
+    else toast('❌ ' + (d && d.error || '添加失败'));
+  });
+}
+function featSyncToggle(id, en){ api('/app/api/tg-features/sync-toggle', { initData: INIT, id: id, enabled: !!en }, function(d){ if (d && d.ok) { toast('已更新'); featSync(); } else toast('❌ 操作失败'); }); }
+function featSyncDel(id){ if (!confirm('确认删除该同步？')) return; api('/app/api/tg-features/sync-del', { initData: INIT, id: id }, function(d){ if (d && d.ok) { toast('✅ 已删除'); featSync(); } else toast('❌ 删除失败'); }); }
+
+/* --- 权限控制 --- */
+function featPerm(){
+  api('/app/api/tg-features/overview', { initData: INIT }, function(d){
+    var html = '<div class="card"><h3>🔒 成员权限控制</h3><div class="desc">对指定成员设置发言/媒体/链接权限（需 bot 为群管理员）</div>'
+      + '<div class="field"><label>选择群</label><select id="fp_sel"><option value="">— 选择群 —</option>';
+    (d && d.ok ? d.groups : []).forEach(function(g){ html += '<option value="'+g.id+'">'+esc(g.title)+' ('+g.id+')</option>'; });
+    html += '</select></div>'
+      + '<div class="field"><label>目标用户 ID（数字）</label><input id="fp_uid" placeholder="123456789"></div>'
+      + '<div class="field"><label>禁言时长（分钟，仅禁言用）</label><input id="fp_min" type="number" min="1" value="60"></div>'
+      + '<div class="btnrow">'
+      + '<button class="btn accent" onclick="featPermDo(\'mute\')">🔇 禁言</button>'
+      + '<button class="btn ok" onclick="featPermDo(\'unmute\')">🔊 解禁</button>'
+      + '<button class="btn warn" onclick="featPermDo(\'mediaoff\')">📵 禁媒体</button>'
+      + '<button class="btn" onclick="featPermDo(\'mediaon\')">📶 开媒体</button>'
+      + '<button class="btn warn" onclick="featPermDo(\'linkoff\')">🔗 禁链接</button>'
+      + '<button class="btn" onclick="featPermDo(\'linkon\')">🔓 开链接</button>'
+      + '</div></div>';
+    $('feat_body').innerHTML = html;
+  });
+}
+function featPermDo(action){
+  var chatId = parseInt($('fp_sel').value, 10), uid = parseInt($('fp_uid').value.trim(), 10), minutes = parseInt($('fp_min').value, 10) || 60;
+  if (!chatId || !uid) { toast('请选择群并填写用户 ID', 'err'); return; }
+  api('/app/api/tg-features/perm', { initData: INIT, chatId: chatId, userId: uid, action: action, minutes: minutes }, function(d){
+    if (d && d.ok) { toast('✅ ' + (d.message || '操作成功')); }
+    else toast('❌ ' + (d && d.error || '操作失败'));
+  });
+}
+
+/* --- 邀请系统 --- */
+function featInvite(){
+  var html = '<div class="card"><h3>🔗 邀请系统</h3><div class="desc">成员在群内发送 <b>/link</b> 生成专属邀请链接，邀请好友入群自动累计次数并奖励积分</div>'
+    + '<div class="field"><label>选择群</label><select id="fi_sel" onchange="featInviteLoad()"><option value="">— 选择群 —</option>';
+  api('/app/api/tg-features/overview', { initData: INIT }, function(d){
+    var sel = $('fi_sel');
+    (d && d.ok ? d.groups : []).forEach(function(g){ sel.innerHTML += '<option value="'+g.id+'">'+esc(g.title)+' ('+g.id+')</option>'; });
+  });
+  html += '</select></div>'
+    + '<div class="btnrow"><button class="btn accent" onclick="featInviteLoad()">📊 加载邀请排行</button>'
+    + '<button class="btn warn" onclick="featInviteReset()">🗑 清空邀请数据</button></div>'
+    + '<div id="fi_res" style="margin-top:10px"><div class="desc">选择群后点「加载邀请排行」查看统计</div></div></div>';
+  $('feat_body').innerHTML = html;
+}
+function featInviteLoad(){
+  var chatId = parseInt($('fi_sel').value, 10);
+  if (!chatId) { toast('请选择群', 'err'); return; }
+  $('fi_res').innerHTML = '<div class="desc">加载中…</div>';
+  api('/app/api/tg-features/invite-stats', { initData: INIT, chatId: chatId }, function(d){
+    var rows = (d && d.ok && d.rows) || [];
+    if (!rows.length) { $('fi_res').innerHTML = '<div class="desc">还没有邀请数据。让成员在群里发 /link 生成专属链接。</div>'; return; }
+    var html = '<table><tr><th>#</th><th>用户 ID</th><th>邀请人数</th><th>奖励积分</th></tr>';
+    rows.forEach(function(r, i){ html += '<tr><td>'+(i+1)+'</td><td>'+r.userId+'</td><td>'+r.count+'</td><td>+'+r.points+'</td></tr>'; });
+    html += '</table><div class="desc" style="margin-top:8px">💡 统计每分钟自动刷新，奖励积分在「群功能-积分规则-邀请积分」中设置。</div>';
+    $('fi_res').innerHTML = html;
+  });
+}
+function featInviteReset(){
+  var chatId = parseInt($('fi_sel').value, 10);
+  if (!chatId) { toast('请选择群', 'err'); return; }
+  if (!confirm('确认清空该群全部邀请数据？此操作不可恢复')) return;
+  api('/app/api/tg-features/invite-reset', { initData: INIT, chatId: chatId }, function(d){
+    if (d && d.ok) { toast('✅ 已清空'); featInviteLoad(); } else toast('❌ 清空失败');
+  });
+}
+
+/* --- 命令别名 --- */
+function featAlias(){
+  var html = '<div class="card"><h3>🗂 命令别名</h3><div class="desc">为群命令设置中文/自定义触发词。例如给 /sign_in 设置别名「签到」，成员发「签到」即可签到</div>'
+    + '<div class="field"><label>选择群</label><select id="fa_sel" onchange="featAliasLoad()"><option value="">— 选择群 —</option>';
+  api('/app/api/tg-features/overview', { initData: INIT }, function(d){
+    var sel = $('fa_sel');
+    (d && d.ok ? d.groups : []).forEach(function(g){ sel.innerHTML += '<option value="'+g.id+'">'+esc(g.title)+' ('+g.id+')</option>'; });
+  });
+  html += '</select></div>'
+    + '<div class="field"><label>别名（如：签到）</label><input id="fa_alias" placeholder="签到"></div>'
+    + '<div class="field"><label>对应命令（如：/sign_in）</label><input id="fa_cmd" placeholder="/sign_in"></div>'
+    + '<button class="btn accent full" onclick="featAliasAdd()">➕ 添加别名</button>'
+    + '<div id="fa_res" style="margin-top:12px"></div></div>';
+  $('feat_body').innerHTML = html;
+}
+function featAliasLoad(){
+  var chatId = parseInt($('fa_sel').value, 10);
+  if (!chatId) { toast('请选择群', 'err'); return; }
+  api('/app/api/tg-features/config', { initData: INIT, chatId: chatId }, function(d){
+    var cfg = (d && d.ok && d.cfg) || {};
+    var aliases = cfg.cmdAlias || {};
+    var keys = Object.keys(aliases);
+    if (!keys.length) { $('fa_res').innerHTML = '<div class="desc">暂无别名</div>'; return; }
+    var html = '<table><tr><th>别名</th><th>命令</th><th></th></tr>';
+    keys.forEach(function(k){ html += '<tr><td>'+esc(k)+'</td><td>'+esc(aliases[k])+'</td><td><button class="btn sm warn" onclick="featAliasDel(\''+k.replace(/'/g,'\\\'')+'\')">删除</button></td></tr>'; });
+    html += '</table>';
+    $('fa_res').innerHTML = html;
+  });
+}
+function featAliasAdd(){
+  var chatId = parseInt($('fa_sel').value, 10), alias = $('fa_alias').value.trim(), cmd = $('fa_cmd').value.trim();
+  if (!chatId || !alias || !cmd) { toast('请选择群并填写别名与命令', 'err'); return; }
+  api('/app/api/tg-features/config', { initData: INIT, chatId: chatId }, function(d){
+    var cfg = (d && d.ok && d.cfg) || {};
+    cfg.cmdAlias = cfg.cmdAlias || {};
+    cfg.cmdAlias[alias] = cmd;
+    api('/app/api/tg-features/config-save', { initData: INIT, chatId: chatId, cfg: cfg }, function(r){
+      if (r && r.ok) { toast('✅ 已添加'); $('fa_alias').value=''; $('fa_cmd').value=''; featAliasLoad(); }
+      else toast('❌ 保存失败');
+    });
+  });
+}
+function featAliasDel(alias){
+  var chatId = parseInt($('fa_sel').value, 10);
+  if (!confirm('确认删除别名「'+alias+'」？')) return;
+  api('/app/api/tg-features/config', { initData: INIT, chatId: chatId }, function(d){
+    var cfg = (d && d.ok && d.cfg) || {};
+    cfg.cmdAlias = cfg.cmdAlias || {};
+    delete cfg.cmdAlias[alias];
+    api('/app/api/tg-features/config-save', { initData: INIT, chatId: chatId, cfg: cfg }, function(r){
+      if (r && r.ok) { toast('✅ 已删除'); featAliasLoad(); } else toast('❌ 保存失败');
+    });
+  });
+}
+
+/* --- 频道功能 --- */
+var FEAT_CH_ID = null;
+function featChannel(){
+  var html = '<div class="card"><h3>📡 频道功能</h3><div class="desc">评论沙发 / 自动删除系统消息 / 频道屏蔽 / 控制权限 / 人数趋势</div>'
+    + '<div class="field"><label>选择频道</label><select id="fc_sel" onchange="featChannelLoad(this.value)"><option value="">— 选择频道 —</option>';
+  api('/app/api/tg-features/overview', { initData: INIT }, function(d){
+    var sel = $('fc_sel');
+    (d && d.ok ? d.channels : []).forEach(function(c){ sel.innerHTML += '<option value="'+c.id+'"'+(FEAT_CH_ID===c.id?' selected':'')+'>'+esc(c.title)+' ('+c.id+')</option>'; });
+  });
+  html += '</select></div><div id="fc_body"><div class="empty">请选择频道后加载配置</div></div></div>';
+  $('feat_body').innerHTML = html;
+  if (FEAT_CH_ID) featChannelLoad(FEAT_CH_ID);
+}
+function featChannelLoad(chatId){
+  FEAT_CH_ID = Number(chatId);
+  if (!FEAT_CH_ID) return;
+  api('/app/api/tg-features/channel-config', { initData: INIT, chatId: FEAT_CH_ID }, function(d){
+    var cfg = (d && d.ok && d.cfg) || {};
+    var ad = cfg.autoDelete || {}, blk = cfg.block || {}, sofa = cfg.commentSofa || {};
+    var scope = cfg.adminScope || 'all';
+    var html = '<div class="card" style="margin:10px 0"><div style="font-size:13px;font-weight:600;margin-bottom:6px">💬 评论沙发（频道帖子抢占评论区）</div>'
+      + '<div class="desc">开启后频道发帖，bot 第一时间在评论区发送评论。需频道已启用讨论群（linked discussion group）</div>'
+      + '<div class="field"><label><input type="checkbox" id="fc_sofa"'+(sofa.enabled?' checked':'')+'> 开启评论沙发</label></div>'
+      + '<div class="field"><label>评论文本</label><textarea id="fc_sofaText" rows="2">'+esc(sofa.text||'')+'</textarea></div>'
+      + '<div class="field"><label>评论按钮（格式：标题---按钮1 && 按钮2，每行一组）</label><textarea id="fc_sofaBtn" rows="2" placeholder="📌 更多信息---\n官网 && 群组">'+esc(sofa.button&&sofa.button.raw||'')+'</textarea></div></div>'
+      + '<div class="card" style="margin:10px 0"><div style="font-size:13px;font-weight:600;margin-bottom:6px">🛡 自动删除系统消息</div>'
+      + '<div class="field"><label><input type="checkbox" id="fc_adPin"'+(ad.pin!==false?' checked':'')+'> 删除置顶通知</label></div>'
+      + '<div class="field"><label><input type="checkbox" id="fc_adTitle"'+(ad.title!==false?' checked':'')+'> 删除修改名称通知</label></div>'
+      + '<div class="field"><label><input type="checkbox" id="fc_adPhoto"'+(ad.photo!==false?' checked':'')+'> 删除修改头像通知</label></div></div>'
+      + '<div class="card" style="margin:10px 0"><div style="font-size:13px;font-weight:600;margin-bottom:6px">⛔ 频道屏蔽</div>'
+      + '<div class="field"><label><input type="checkbox" id="fc_blkBot"'+(blk.bot?' checked':'')+'> 屏蔽机器人（新订阅是机器人自动封禁）</label></div>'
+      + '<div class="field"><label><input type="checkbox" id="fc_blkLeave"'+(blk.leaveBan?' checked':'')+'> 退订封禁（订阅者离开即封禁，慎用）</label></div>'
+      + '<div class="field"><label><input type="checkbox" id="fc_blkFlash"'+(blk.flash?' checked':'')+'> 屏蔽闪进闪退（订阅后 60 秒内退订自动封禁）</label></div></div>'
+      + '<div class="card" style="margin:10px 0"><div style="font-size:13px;font-weight:600;margin-bottom:6px">🔑 控制权限（谁能使用 bot 管理功能）</div>'
+      + '<div class="field"><label><select id="fc_scope">'
+      + '<option value="all"'+(scope==='all'?' selected':'')+'>所有管理员</option>'
+      + '<option value="creator"'+(scope==='creator'?' selected':'')+'>仅群主/频道主</option>'
+      + '<option value="addadmin"'+(scope==='addadmin'?' selected':'')+'>拥有添加管理员权限</option>'
+      + '<option value="banright"'+(scope==='banright'?' selected':'')+'>拥有封禁权限</option>'
+      + '</select></label></div></div>'
+      + '<div class="btnrow"><button class="btn accent" onclick="featChannelSave()">💾 保存频道配置</button>'
+      + '<button class="btn" onclick="featTrend()">📈 人数趋势</button></div>'
+      + '<div id="fc_trend" style="margin-top:12px"></div>';
+    $('fc_body').innerHTML = html;
+  });
+}
+function featChannelSave(){
+  var sofaText = $('fc_sofaText').value.trim();
+  var sofaBtnRaw = $('fc_sofaBtn').value.trim();
+  var sofaBtn = null;
+  if (sofaBtnRaw) {
+    var kb = parseFeatButtons(sofaBtnRaw);
+    if (kb) sofaBtn = { keyboard: kb, raw: sofaBtnRaw };
+  }
+  var cfg = {
+    autoDelete: { pin: $('fc_adPin').checked, title: $('fc_adTitle').checked, photo: $('fc_adPhoto').checked },
+    block: { bot: $('fc_blkBot').checked, leaveBan: $('fc_blkLeave').checked, flash: $('fc_blkFlash').checked },
+    commentSofa: { enabled: $('fc_sofa').checked, text: sofaText, button: sofaBtn },
+    adminScope: $('fc_scope').value
+  };
+  api('/app/api/tg-features/channel-config-save', { initData: INIT, chatId: FEAT_CH_ID, cfg: cfg }, function(d){
+    if (d && d.ok) { toast('✅ 已保存'); featChannelLoad(FEAT_CH_ID); }
+    else toast('❌ ' + (d && d.error || '保存失败'));
+  });
+}
+function parseFeatButtons(raw){
+  var lines = String(raw||'').split('\n').map(function(l){ return l.trim(); }).filter(Boolean);
+  if (!lines.length) return null;
+  var title = null, start = 0;
+  if (lines[0] && !lines[0].includes('&&') && lines.length > 1 && /^-{3,}$/.test(lines[1] || '')) { title = lines[0]; start = 2; }
+  var kb = [];
+  for (var i = start; i < lines.length; i++) {
+    var items = lines[i].split('&&').map(function(s){ return s.trim(); }).filter(Boolean);
+    if (!items.length) continue;
+    var row = items.map(function(it){
+      var url = it.match(/https?:\/\/[^\s]+/);
+      return url ? { text: it.replace(/https?:\/\/[^\s]+/, '').trim() || '打开', url: url[0] } : { text: it, callback_data: 'btn_' + Math.random().toString(36).slice(2, 8) };
+    });
+    kb.push(row);
+  }
+  return kb;
+}
+function featTrend(){
+  if (!FEAT_CH_ID) return;
+  $('fc_trend').innerHTML = '<div class="desc">加载中…</div>';
+  api('/app/api/tg-features/member-trend', { initData: INIT, chatId: FEAT_CH_ID, days: 14 }, function(d){
+    var rows = (d && d.ok && d.rows) || [];
+    if (!rows.length) { $('fc_trend').innerHTML = '<div class="desc">暂无趋势数据（人数统计每小时自动记录一次）</div>'; return; }
+    var max = 1;
+    rows.forEach(function(r){ if (r.count > max) max = r.count; });
+    var html = '<div style="font-size:13px;font-weight:600;margin:8px 0">📈 近 ' + rows.length + ' 天人数趋势</div><div style="display:flex;align-items:flex-end;gap:3px;height:120px;border-bottom:1px solid #ddd;padding:0 2px">';
+    rows.forEach(function(r){
+      var h = Math.max(4, Math.round(r.count / max * 100));
+      html += '<div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%">'
+        + '<div style="width:70%;background:linear-gradient(180deg,#3b82f6,#1d4ed8);border-radius:3px 3px 0 0;height:'+h+'px" title="'+r.date+' '+r.count+'人"></div>'
+        + '<div style="font-size:9px;color:#888;margin-top:2px">'+r.date.slice(5)+'</div></div>';
+    });
+    html += '</div><div class="desc" style="margin-top:4px">当前最多 '+max+' 人</div>';
+    $('fc_trend').innerHTML = html;
+  });
+}
+
+/* ================= 启动 ================= */
+doAuth();
+</script>
+</body>
+</html>

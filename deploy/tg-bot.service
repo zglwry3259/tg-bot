@@ -1,0 +1,24 @@
+[Unit]
+Description=群组管家 Telegram Bot
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=/opt/tg-group-bot
+ExecStart=/usr/bin/node src/server.js
+Restart=always
+RestartSec=5
+Environment=NODE_ENV=production
+
+# 环境变量文件（确保权限为 600）
+EnvironmentFile=/opt/tg-group-bot/.env
+
+# 安全限制
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=/opt/tg-group-bot/data
+
+[Install]
+WantedBy=multi-user.target

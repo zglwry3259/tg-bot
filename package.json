@@ -1,0 +1,33 @@
+{
+  "name": "tg-group-bot-server",
+  "version": "6.7.11",
+  "description": "群组管家 v6.7.11 - 服务器版（抽奖+入群验证+管理员公告+投票+群管工具）",
+  "main": "src/server.js",
+  "type": "module",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "node --watch src/server.js",
+    "set-webhook": "node scripts/setWebhook.mjs",
+    "set-commands": "node scripts/setCommands.mjs"
+  },
+  "keywords": [
+    "telegram",
+    "bot",
+    "lottery",
+    "poll",
+    "group-manager",
+    "express",
+    "vps"
+  ],
+  "license": "MIT",
+  "dependencies": {
+    "better-sqlite3": "^12.11.1",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "undici": "^7.29.1",
+    "ws": "^8.21.3"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

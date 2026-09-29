@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>群组管家 · 管理后台</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif; background: #0f1419; color: #e7e9ea; }
+a { color: #3b82f6; text-decoration: none; }
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
+#login { display: none; height: 100vh; align-items: center; justify-content: center; }
+#login.active { display: flex; }
+.login-box { width: 340px; background: #1a222c; border: 1px solid #2a3644; border-radius: 12px; padding: 32px; }
+.login-box h1 { font-size: 20px; margin-bottom: 6px; }
+.login-box p { color: #8899a6; font-size: 13px; margin-bottom: 20px; }
+.login-box input { width: 100%; padding: 10px 12px; border-radius: 8px; border: 1px solid #2a3644; background: #0f1419; color: #e7e9ea; font-size: 14px; margin-bottom: 12px; }
+.login-box button { width: 100%; padding: 10px; border: none; border-radius: 8px; background: #3b82f6; color: #fff; font-size: 14px; cursor: pointer; }
+.login-box button:hover { background: #2f6fd6; }
+.login-err { color: #f87171; font-size: 13px; margin-bottom: 10px; display: none; }
+#app { display: none; height: 100vh; }
+#app.active { display: flex; }
+.sidebar { width: 210px; background: #161d26; border-right: 1px solid #2a3644; padding: 16px 0; flex-shrink: 0; overflow-y: auto; }
+.sidebar .brand { padding: 0 20px 16px; border-bottom: 1px solid #2a3644; }
+.sidebar .brand h2 { font-size: 16px; }
+.sidebar .brand small { color: #8899a6; font-size: 11px; }
+.nav-item { display: flex; align-items: center; gap: 10px; padding: 11px 20px; cursor: pointer; color: #b8c2cc; font-size: 14px; border-left: 3px solid transparent; }
+.nav-item:hover { background: #1e2833; }
+.nav-item.active { background: #1e2833; border-left-color: #3b82f6; color: #fff; }
+.sidebar .logout { margin-top: 20px; padding: 11px 20px; cursor: pointer; color: #f87171; font-size: 13px; }
+.sidebar .logout:hover { background: #2a1a1a; }
+.main { flex: 1; overflow-y: auto; padding: 20px 24px; }
+.page { display: none; }
+.page.active { display: block; }
+.page-title { font-size: 20px; font-weight: 600; margin-bottom: 16px; }
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 12px; margin-bottom: 20px; }
+.card { background: #1a222c; border: 1px solid #2a3644; border-radius: 10px; padding: 16px; }
+.card .label { color: #8899a6; font-size: 12px; margin-bottom: 6px; }
+.card .value { font-size: 22px; font-weight: 700; }
+.card .sub { color: #8899a6; font-size: 12px; margin-top: 4px; }
+.panel { background: #1a222c; border: 1px solid #2a3644; border-radius: 10px; padding: 16px; margin-bottom: 14px; }
+.panel h3 { font-size: 15px; margin-bottom: 12px; }
+.panel h3 .tag { font-size: 11px; color: #8899a6; font-weight: 400; margin-left: 8px; }
+.panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; cursor: pointer; }
+.panel-header h3 { margin: 0; }
+.meta { color: #8899a6; font-size: 12px; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 900px) { .grid2 { grid-template-columns: 1fr; } }
+table { width: 100%; border-collapse: collapse; font-size: 13px; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #2a3644; vertical-align: top; word-break: break-all; }
+th { color: #8899a6; font-weight: 500; font-size: 12px; }
+tr:hover td { background: #1e2833; }
+.btn { display: inline-block; padding: 6px 14px; border: none; border-radius: 6px; background: #2a3644; color: #e7e9ea; font-size: 13px; cursor: pointer; margin: 2px; }
+.btn:hover { background: #36495c; }
+.btn.primary { background: #3b82f6; color: #fff; }
+.btn.primary:hover { background: #2f6fd6; }
+.btn.success { background: #16a34a; color: #fff; }
+.btn.success:hover { background: #138a3e; }
+.btn.danger { background: #dc2626; color: #fff; }
+.btn.danger:hover { background: #b91c1c; }
+.btn.warn { background: #d97706; color: #fff; }
+.btn.warn:hover { background: #b45309; }
+.btn.sm { padding: 3px 10px; font-size: 12px; }
+input[type=text], input[type=password], input[type=number], textarea, select {
+  padding: 8px 10px; border-radius: 6px; border: 1px solid #2a3644; background: #0f1419; color: #e7e9ea; font-size: 13px; width: 100%; margin: 4px 0; font-family: inherit;
+}
+textarea { min-height: 60px; resize: vertical; }
+.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.row > * { flex: 0 0 auto; }
+.row .grow { flex: 1; }
+.pill { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 11px; }
+.pill.on { background: #14532d; color: #4ade80; }
+.pill.off { background: #431407; color: #fb923c; }
+.pill.blue { background: #1e3a5f; color: #60a5fa; }
+.pill.red { background: #431407; color: #f87171; }
+.logs { background: #0a0e12; border: 1px solid #2a3644; border-radius: 8px; padding: 12px; font-family: Consolas, Menlo, monospace; font-size: 12px; line-height: 1.6; white-space: pre-wrap; max-height: 70vh; overflow-y: auto; }
+.empty { color: #8899a6; font-size: 13px; padding: 12px 0; }
+.loading { color: #8899a6; font-size: 13px; padding: 12px 0; }
+h4 { font-size: 13px; margin: 12px 0 6px; color: #b8c2cc; }
+#jsErr { display: none; position: fixed; top: 0; left: 0; right: 0; background: #7f1d1d; color: #fff; padding: 8px 12px; font-size: 12px; z-index: 9999; }
+</style>
+</head>
+<body>
+
+<div id="jsErr"></div>
+
+<div id="login">
+  <div class="login-box">
+    <h1>🤖 群组管家</h1>
+    <p>Web 管理后台 · 请输入管理员密码</p>
+    <div class="login-err" id="loginErr"></div>
+    <input type="password" id="pass" placeholder="管理员密码">
+    <button onclick="doLogin()">登 录</button>
+  </div>
+</div>
+
+<div id="app">
+  <div class="sidebar">
+    <div class="brand"><h2>🤖 群组管家</h2><small id="botUname">管理后台</small></div>
+    <div class="nav-item active" data-page="overview" onclick="switchPage('overview')">📊 总览</div>
+    <div class="nav-item" data-page="groups" onclick="switchPage('groups')">👥 群管理</div>
+    <div class="nav-item" data-page="channels" onclick="switchPage('channels')">📢 频道管理</div>
+    <div class="nav-item" data-page="data" onclick="switchPage('data')">🗄️ 数据浏览</div>
+    <div class="nav-item" data-page="logs" onclick="switchPage('logs')">📜 运行日志</div>
+    <div class="logout" onclick="doLogout()">🚪 退出登录</div>
+  </div>
+  <div class="main">
+    <div class="page active" id="page-overview">
+      <div class="page-title">📊 总览</div>
+      <div class="cards" id="ovBot"></div>
+      <div class="cards" id="ovStats"></div>
+      <div class="cards" id="ovServer"></div>
+    </div>
+    <div class="page" id="page-groups">
+      <div class="page-title">👥 群管理</div>
+      <div id="groupsList"></div>
+    </div>
+    <div class="page" id="page-channels">
+      <div class="page-title">📢 频道管理</div>
+      <div id="channelsList"></div>
+    </div>
+    <div class="page" id="page-data">
+      <div class="page-title">🗄️ 数据浏览</div>
+      <div class="row" style="margin-bottom:12px;">
+        <select id="dataPrefix" style="width:240px;" onchange="loadData()">
+          <option value="">全部数据</option>
+          <option value="bot_groups">bot_groups（群列表）</option>
+          <option value="bot_channels">bot_channels（频道列表）</option>
+          <option value="lottery:">lottery:*（抽奖）</option>
+          <option value="banned:">banned:*（违禁词配置）</option>
+          <option value="welcome_cfg:">welcome_cfg:*（进群欢迎）</option>
+          <option value="btn:">btn:*（自动按钮）</option>
+          <option value="banned_log:">banned_log:*（封禁名单）</option>
+          <option value="group_cfg:">group_cfg:*（群配置）</option>
+          <option value="verify_cfg:">verify_cfg:*（验证配置）</option>
+        </select>
+        <button class="btn primary" onclick="loadData()">刷新</button>
+        <span class="meta" id="dataCount"></span>
+      </div>
+      <div id="dataTable"></div>
+    </div>
+    <div class="page" id="page-logs">
+      <div class="page-title">📜 运行日志</div>
+      <div class="row" style="margin-bottom:12px;">
+        <button class="btn primary" onclick="loadLogs()">刷新日志</button>
+        <button class="btn" onclick="loadLogs(300)">显示 300 行</button>
+      </div>
+      <div class="logs" id="logsBox"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* 全局错误捕获：任何 JS 错误都会显示在页面顶部，方便排查 */
+window.onerror = function(msg, src, line) {
+  var el = document.getElementById('jsErr');
+  if (el) { el.style.display = 'block'; el.textContent = '页面脚本错误: ' + msg + ' (行 ' + line + ')'; }
+  return false;
+};
+
+var TOKEN = '';
+try { TOKEN = localStorage.getItem('admin_token') || ''; } catch (e) { TOKEN = ''; }
+var CHATS = { groups: [], channels: [] };
+
+function $(id) { return document.getElementById(id); }
+
+/* XHR 请求（兼容老浏览器，不用 fetch/async） */
+function api(path, opts, cb) {
+  opts = opts || {};
+  var xhr = new XMLHttpRequest();
+  xhr.open(opts.method || 'GET', path, true);
+  xhr.setRequestHeader('Content-Type', 'application/json');
+  if (TOKEN) xhr.setRequestHeader('x-admin-token', TOKEN);
+  xhr.onreadystatechange = function () {
+    if (xhr.readyState !== 4) return;
+    var data = {};
+    try { data = JSON.parse(xhr.responseText); } catch (e) { data = {}; }
+    if (xhr.status === 401) { showLogin(); if (cb) cb({ ok: false, error: '未登录' }); return; }
+    if (cb) cb(data);
+  };
+  xhr.send(opts.body || null);
+}
+
+function esc(s) { if (s === null || s === undefined) return ''; return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+function fmtUptime(s) { if (s < 60) return s + '秒'; if (s < 3600) return Math.floor(s / 60) + '分钟'; if (s < 86400) return Math.floor(s / 3600) + '小时'; return Math.floor(s / 86400) + '天'; }
+
+function showLogin() { $('login').className = 'active'; $('app').className = ''; }
+function showApp() { $('login').className = ''; $('app').className = 'active'; }
+
+function doLogin() {
+  $('loginErr').style.display = 'none';
+  var password = $('pass').value.replace(/^\s+|\s+$/g, '');
+  api('/admin/api/login', { method: 'POST', body: JSON.stringify({ password: password }) }, function (data) {
+    if (data && data.ok) {
+      TOKEN = data.token;
+      try { localStorage.setItem('admin_token', TOKEN); } catch (e) {}
+      showApp();
+      loadOverview();
+    } else {
+      $('loginErr').textContent = (data && data.error) || '密码错误';
+      $('loginErr').style.display = 'block';
+    }
+  });
+}
+function doLogout() {
+  api('/admin/api/logout', { method: 'POST', body: '{}' }, function () {
+    TOKEN = '';
+    try { localStorage.removeItem('admin_token'); } catch (e) {}
+    showLogin();
+  });
+}
+
+function switchPage(page) {
+  var items = document.querySelectorAll('.nav-item');
+  for (var i = 0; i < items.length; i++) items[i].className = (items[i].getAttribute('data-page') === page) ? 'nav-item active' : 'nav-item';
+  var pages = document.querySelectorAll('.page');
+  for (var j = 0; j < pages.length; j++) pages[j].className = 'page';
+  $('page-' + page).className = 'page active';
+  if (page === 'overview') loadOverview();
+  if (page === 'groups') loadChats('groups');
+  if (page === 'channels') loadChats('channels');
+  if (page === 'data') loadData();
+  if (page === 'logs') loadLogs();
+}
+
+function card(label, value, sub) { return '<div class="card"><div class="label">' + label + '</div><div class="value">' + value + '</div>' + (sub ? '<div class="sub">' + esc(sub) + '</div>' : '') + '</div>'; }
+
+function loadOverview() {
+  api('/admin/api/overview', {}, function (d) {
+    if (!d || !d.ok) { $('ovBot').innerHTML = '<div class="empty">加载失败</div>'; return; }
+    $('botUname').textContent = d.bot.username ? '@' + d.bot.username : '管理后台';
+    $('ovBot').innerHTML = card('Bot 状态', d.bot.online ? '✅ 在线' : '❌ 离线', d.bot.username ? '@' + d.bot.username : '') + card('Webhook', d.bot.webhook || '未设置', '待处理: ' + (d.bot.pendingCount === null || d.bot.pendingCount === undefined ? '-' : d.bot.pendingCount) + (d.bot.lastError ? ' · 错误:' + d.bot.lastError : ''));
+    var s = d.stats;
+    $('ovStats').innerHTML = card('👥 群组', s.groups) + card('📢 频道', s.channels) + card('🎊 抽奖', s.lotteries) + card('🚫 违禁词', s.bannedCfgs) + card('👋 欢迎配置', s.welcomeCfgs) + card('⚙️ 自动按钮', s.btnCfgs) + card('📋 封禁名单', s.bannedLogs) + card('⏳ 待验证', s.pendingVerify) + card('🗄️ KV 键', s.kvTotal) + card('💾 数据文件', (s.dataSize / 1024).toFixed(1) + ' KB', 'data/kv-store.json');
+    var sv = d.server;
+    $('ovServer').innerHTML = card('主机', sv.hostname, sv.platform + ' ' + sv.arch) + card('运行时长', fmtUptime(sv.uptime)) + card('内存', sv.memUsedMB + ' / ' + sv.memTotalMB + ' MB', '剩余 ' + sv.memFreeMB + ' MB') + card('磁盘 /', sv.disk ? (sv.disk.used + ' / ' + sv.disk.avail) : '-', sv.disk ? '使用 ' + sv.disk.use : '');
+  });
+}
+
+function loadChats(which) {
+  api('/admin/api/chats', {}, function (d) {
+    if (!d || !d.ok) { $('groupsList').innerHTML = '<div class="empty">加载失败</div>'; return; }
+    CHATS = d;
+    if (which === 'groups') renderGroups();
+    else renderChannels();
+  });
+}
+
+function renderGroups() {
+  var box = $('groupsList');
+  if (!CHATS.groups.length) { box.innerHTML = '<div class="empty">暂无群组（把 bot 拉进群并设为管理员后自动记录）</div>'; return; }
+  var html = '';
+  for (var i = 0; i < CHATS.groups.length; i++) {
+    var g = CHATS.groups[i];
+    html += '<div class="panel" style="margin-bottom:12px;"><div class="panel-header" onclick="togglePanel(\'g_' + g.id + '\')"><h3>🏘 ' + esc(g.title || '未命名群') + ' <span class="tag">' + g.id + '</span></h3><span class="meta">' + (g.lastStatus || '') + ' ▾</span></div><div id="g_' + g.id + '" style="display:none;"><div class="grid2"><div><h4>📋 封禁 / 禁言名单</h4><div id="gban_' + g.id + '">加载中...</div></div><div><h4>🚫 违禁词配置</h4><div id="gbanned_' + g.id + '">加载中...</div></div></div><div class="grid2"><div><h4>👋 进群欢迎</h4><div id="gwelcome_' + g.id + '">加载中...</div></div><div><h4>📢 发布公告</h4><textarea id="ann_' + g.id + '" placeholder="输入公告内容，发送后自动置顶..."></textarea><input type="text" id="abtn_' + g.id + '" placeholder="附带按钮（留空则自动用已配置）：按钮1-https://t.me/xxx && 按钮2-https://t.me/yyy"><button class="btn primary" onclick="sendAnnounce(' + g.id + ')">发送并置顶</button></div></div></div></div>';
+  }
+  box.innerHTML = html;
+  for (var j = 0; j < CHATS.groups.length; j++) loadGroupDetail(CHATS.groups[j].id);
+}
+
+function renderChannels() {
+  var box = $('channelsList');
+  if (!CHATS.channels.length) { box.innerHTML = '<div class="empty">暂无频道（把 bot 拉进频道并设为管理员后自动记录）</div>'; return; }
+  var html = '';
+  for (var i = 0; i < CHATS.channels.length; i++) {
+    var c = CHATS.channels[i];
+    html += '<div class="panel" style="margin-bottom:12px;"><div class="panel-header" onclick="togglePanel(\'c_' + c.id + '\')"><h3>📣 ' + esc(c.title || '未命名频道') + ' <span class="tag">' + c.id + '</span></h3><span class="meta">' + (c.lastStatus || '') + ' ▾</span></div><div id="c_' + c.id + '" style="display:none;"><div class="grid2"><div><h4>⚙️ 自动按钮</h4><div id="cbtn_' + c.id + '">加载中...</div></div><div><h4>📢 发布公告</h4><textarea id="cann_' + c.id + '" placeholder="输入公告内容，发送后自动置顶..."></textarea><input type="text" id="abtn_' + c.id + '" placeholder="附带按钮（留空则自动用已配置）：按钮1-https://t.me/xxx && 按钮2-https://t.me/yyy"><button class="btn primary" onclick="sendAnnounce(' + c.id + ')">发送并置顶</button></div></div></div></div>';
+  }
+  box.innerHTML = html;
+  for (var j = 0; j < CHATS.channels.length; j++) loadChannelDetail(CHATS.channels[j].id);
+}
+
+function togglePanel(id) { var el = $(id); if (el) el.style.display = (el.style.display === 'none') ? 'block' : 'none'; }
+
+function loadGroupDetail(gid) { loadBannedList(gid); loadBannedCfg(gid); loadWelcomeCfg(gid); }
+function loadChannelDetail(cid) { loadChannelBtn(cid); }
+
+function loadBannedList(gid) {
+  var box = $('gban_' + gid);
+  api('/admin/api/data?prefix=' + encodeURIComponent('banned_log:' + gid), {}, function (d) {
+    var log = (d && d.items && d.items[0]) ? d.items[0].value : null;
+    if (!log || !log.length) { box.innerHTML = '<div class="empty">暂无封禁/禁言记录</div>'; return; }
+    var html = '<table><tr><th>昵称</th><th>类型</th><th>操作</th></tr>';
+    for (var i = 0; i < log.length; i++) {
+      var u = log[i];
+      var act = (u.type === 'mute') ? 'unmute' : 'unban';
+      var label = (u.type === 'mute') ? '解除禁言' : '解封';
+      var pill = (u.type === 'mute') ? '<span class="pill off">禁言</span>' : '<span class="pill red">封禁</span>';
+      html += '<tr><td>' + esc(u.name) + '<br><small class="meta">' + u.id + '</small></td><td>' + pill + '</td><td><button class="btn success sm" onclick="doAction(\'' + act + '\',' + gid + ',' + u.id + ')">' + label + '</button></td></tr>';
+    }
+    box.innerHTML = html + '</table>';
+  });
+}
+
+function loadBannedCfg(gid) {
+  var box = $('gbanned_' + gid);
+  api('/admin/api/data?prefix=' + encodeURIComponent('banned:' + gid), {}, function (d) {
+    var cfg = (d && d.items && d.items[0]) ? d.items[0].value : null;
+    var key = 'banned:' + gid;
+    if (!cfg || !cfg.words) cfg = { enabled: false, words: [], warnLimit: 3, muteMinutes: 60, remindDelete: true };
+    var wordsHtml = '';
+    if (cfg.words && cfg.words.length) {
+      for (var i = 0; i < cfg.words.length; i++) wordsHtml += '<span class="pill blue" style="margin:2px;">' + esc(cfg.words[i]) + ' <a href="javascript:;" onclick="delBannedWord(' + gid + ',' + i + ')">✕</a></span>';
+    } else wordsHtml = '<div class="empty">暂无违禁词</div>';
+    var valJson = JSON.stringify(cfg.words || []).replace(/"/g, '&quot;');
+    box.innerHTML = '<div class="row"><button class="btn sm ' + (cfg.enabled ? 'success' : 'warn') + '" onclick="saveCfg(\'' + key + '\',{enabled:' + (!cfg.enabled) + ',words:' + valJson + ',warnLimit:' + cfg.warnLimit + ',muteMinutes:' + cfg.muteMinutes + ',remindDelete:' + (!!cfg.remindDelete) + '})">' + (cfg.enabled ? '✅ 开启' : '🔴 关闭') + '</button><span class="pill ' + (cfg.enabled ? 'on' : 'off') + '">' + (cfg.enabled ? '已开启' : '已关闭') + '</span></div><div class="meta" style="margin:6px 0;">惩罚：警告 ' + cfg.warnLimit + ' 次后禁言 ' + cfg.muteMinutes + ' 分钟 · 删除提醒：' + (cfg.remindDelete ? '开' : '关') + '</div><div>' + wordsHtml + '</div><div class="row" style="margin-top:8px;"><input type="text" id="bw_' + gid + '" placeholder="添加违禁词，逗号分隔" class="grow"><button class="btn sm primary" onclick="addBannedWord(' + gid + ')">添加</button></div><div class="row" style="margin-top:6px;"><input type="number" id="bwarn_' + gid + '" placeholder="次数" value="' + cfg.warnLimit + '" style="width:70px;"><input type="number" id="bmin_' + gid + '" placeholder="禁言分钟" value="' + cfg.muteMinutes + '" style="width:90px;"><button class="btn sm" onclick="setBannedPunish(' + gid + ')">设置惩罚</button></div>';
+  });
+}
+
+function loadWelcomeCfg(gid) {
+  var box = $('gwelcome_' + gid);
+  api('/admin/api/data?prefix=' + encodeURIComponent('welcome_cfg:' + gid), {}, function (d) {
+    var cfg = (d && d.items && d.items[0]) ? d.items[0].value : null;
+    var key = 'welcome_cfg:' + gid;
+    if (!cfg || typeof cfg !== 'object') cfg = { enabled: false, deleteMin: 0, text: '', media: '', mediaType: 'photo', buttons: [] };
+    var textJson = JSON.stringify(cfg.text || '');
+    box.innerHTML = '<div class="row"><button class="btn sm ' + (cfg.enabled ? 'success' : 'warn') + '" onclick="saveCfg(\'' + key + '\',{enabled:' + (!cfg.enabled) + ',deleteMin:' + cfg.deleteMin + ',text:' + textJson + ',media:' + JSON.stringify(cfg.media || '') + ',mediaType:\'' + (cfg.mediaType || 'photo') + '\',buttons:' + JSON.stringify(cfg.buttons || []) + '})">' + (cfg.enabled ? '✅ 开启' : '🔴 关闭') + '</button><span class="pill ' + (cfg.enabled ? 'on' : 'off') + '">' + (cfg.enabled ? '已开启' : '已关闭') + '</span><span class="meta">删除提示: ' + (cfg.deleteMin ? cfg.deleteMin + '分钟' : '否') + '</span></div><div class="meta" style="margin:6px 0;">📝 文本：' + (cfg.text ? esc(cfg.text).slice(0, 60) + (cfg.text.length > 60 ? '…' : '') : '<i>默认</i>') + (cfg.media ? ' · 🖼️ 有媒体' : '') + ' · 🔘 ' + (cfg.buttons || []).length + ' 个按钮</div><div class="row"><input type="text" id="wt_' + gid + '" placeholder="新欢迎文本（{name}=成员名）" class="grow"><button class="btn sm primary" onclick="setWelcomeText(' + gid + ')">改文本</button></div>';
+  });
+}
+
+function loadChannelBtn(cid) {
+  var box = $('cbtn_' + cid);
+  api('/admin/api/data?prefix=' + encodeURIComponent('btn:' + cid), {}, function (d) {
+    var cfg = (d && d.items && d.items[0]) ? d.items[0].value : null;
+    var key = 'btn:' + cid;
+    var preview = '';
+    if (cfg && cfg.keyboard) {
+      for (var i = 0; i < cfg.keyboard.length; i++) {
+        var parts = [];
+        for (var j = 0; j < cfg.keyboard[i].length; j++) { var b = cfg.keyboard[i][j]; parts.push(b.text + (b.url ? '(' + b.url + ')' : '')); }
+        preview += parts.join(' · ') + '<br>';
+      }
+    }
+    box.innerHTML = '<div class="meta">当前：' + (preview || '未配置自动按钮') + '</div><textarea id="cbtn_text_' + cid + '" placeholder="按钮配置格式：&#10;名称-链接（一行一个，多个用 && 分隔）&#10;示例：&#10;按钮1-https://t.me/xxx && 按钮2-https://t.me/yyy"></textarea><div class="row"><button class="btn sm primary" onclick="setChannelBtn(' + cid + ')">保存按钮</button><button class="btn sm danger" onclick="delCfg(\'' + key + '\')">清除</button></div>';
+  });
+}
+
+function doAction(action, chatId, userId) {
+  if (!confirm('确认执行 ' + action + ' 于 ' + userId + ' ?')) return;
+  api('/admin/api/action', { method: 'POST', body: JSON.stringify({ action: action, chatId: chatId, userId: userId }) }, function (r) {
+    alert((r && r.message) || (r && r.ok ? '成功' : '失败'));
+    loadGroupDetail(chatId);
+  });
+}
+
+function saveCfg(key, value) {
+  api('/admin/api/action', { method: 'POST', body: JSON.stringify({ action: 'saveConfig', key: key, value: value }) }, function (r) {
+    alert((r && r.message) || (r && r.ok ? '已保存' : '失败'));
+    if (key.indexOf('banned:') === 0) loadBannedCfg(parseInt(key.split(':')[1], 10));
+    if (key.indexOf('welcome_cfg:') === 0) loadWelcomeCfg(parseInt(key.split(':')[1], 10));
+  });
+}
+function delCfg(key) {
+  if (!confirm('确认删除 ' + key + ' ?')) return;
+  api('/admin/api/action', { method: 'POST', body: JSON.stringify({ action: 'deleteKey', key: key }) }, function () { alert('已删除'); location.reload(); });
+}
+function addBannedWord(gid) {
+  var input = $('bw_' + gid);
+  if (!input) return alert('页面未加载完成，请刷新后再试');
+  var words = input.value.split(/[,，、\s]+/);
+  var clean = [];
+  for (var i = 0; i < words.length; i++) { var w = words[i].replace(/^\s+|\s+$/g, ''); if (w) clean.push(w); }
+  if (!clean.length) return alert('请输入违禁词');
+  api('/admin/api/data?prefix=' + encodeURIComponent('banned:' + gid), {}, function (d) {
+    var cfg = (d && d.items && d.items[0]) ? d.items[0].value : null;
+    if (!cfg || !cfg.words) cfg = { enabled: false, words: [], warnLimit: 3, muteMinutes: 60, remindDelete: true };
+    for (var j = 0; j < clean.length; j++) { if (cfg.words.indexOf(clean[j]) < 0) cfg.words.push(clean[j]); }
+    saveCfg('banned:' + gid, cfg);
+    input.value = '';
+  });
+}
+function delBannedWord(gid, idx) {
+  api('/admin/api/data?prefix=' + encodeURIComponent('banned:' + gid), {}, function (d) {
+    var cfg = (d && d.items && d.items[0]) ? d.items[0].value : null;
+    if (cfg && cfg.words) cfg.words.splice(idx, 1);
+    saveCfg('banned:' + gid, cfg);
+  });
+}
+function setBannedPunish(gid) {
+  var e1 = $('bwarn_' + gid), e2 = $('bmin_' + gid);
+  if (!e1 || !e2) return alert('页面未加载完成，请刷新后再试');
+  var warnLimit = parseInt(e1.value, 10) || 3;
+  var muteMinutes = parseInt(e2.value, 10) || 60;
+  api('/admin/api/data?prefix=' + encodeURIComponent('banned:' + gid), {}, function (d) {
+    var cfg = (d && d.items && d.items[0]) ? d.items[0].value : null;
+    if (!cfg || !cfg.words) cfg = { enabled: false, words: [], warnLimit: 3, muteMinutes: 60, remindDelete: true };
+    cfg.warnLimit = warnLimit; cfg.muteMinutes = muteMinutes;
+    saveCfg('banned:' + gid, cfg);
+  });
+}
+function setWelcomeText(gid) {
+  var input = $('wt_' + gid);
+  if (!input) return alert('页面未加载完成，请刷新后再试');
+  var t = input.value.replace(/^\s+|\s+$/g, '');
+  if (!t) return alert('请输入文本');
+  api('/admin/api/data?prefix=' + encodeURIComponent('welcome_cfg:' + gid), {}, function (d) {
+    var cfg = (d && d.items && d.items[0]) ? d.items[0].value : null;
+    if (!cfg || typeof cfg !== 'object') cfg = { enabled: false, deleteMin: 0, text: '', media: '', mediaType: 'photo', buttons: [] };
+    cfg.text = t;
+    saveCfg('welcome_cfg:' + gid, cfg);
+    $('wt_' + gid).value = '';
+  });
+}
+function parseBtn(text) {
+  var lines = text.split('\n');
+  var keyboard = [];
+  for (var i = 0; i < lines.length; i++) {
+    var line = lines[i].replace(/^\s+|\s+$/g, '');
+    if (!line) continue;
+    var items = line.split('&&');
+    var row = [];
+    for (var j = 0; j < items.length; j++) {
+      var item = items[j].replace(/^\s+|\s+$/g, '');
+      var dash = item.indexOf('-');
+      if (dash <= 0) return null;
+      var name = item.slice(0, dash).replace(/^\s+|\s+$/g, '');
+      var url = item.slice(dash + 1).replace(/^\s+|\s+$/g, '');
+      if (/^@\w+$/.test(url)) url = 'https://t.me/' + url.slice(1);
+      if (!name || !url) return null;
+      row.push({ text: name, url: url });
+    }
+    if (row.length) keyboard.push(row);
+  }
+  if (!keyboard.length) return null;
+  return { title: '📌 更多信息', keyboard: keyboard, mode: 'inline' };
+}
+function setChannelBtn(cid) {
+  var input = $('cbtn_text_' + cid);
+  if (!input) return alert('页面未加载完成，请刷新后再试');
+  var text = input.value.replace(/^\s+|\s+$/g, '');
+  if (!text) return alert('请输入按钮配置');
+  var cfg = parseBtn(text);
+  if (!cfg) return alert('格式无法解析。格式：名称-链接，多个用 && 分隔，如：按钮1-https://t.me/xxx && 按钮2-https://t.me/yyy');
+  saveCfg('btn:' + cid, cfg);
+}
+function sendAnnounce(chatId) {
+  // 按频道列表判断（超级群 ID 也是 -100 开头，不能靠前缀判断）
+  var isChannel = false;
+  for (var k = 0; k < CHATS.channels.length; k++) { if (String(CHATS.channels[k].id) === String(chatId)) { isChannel = true; break; } }
+  var el = $(isChannel ? 'cann_' + chatId : 'ann_' + chatId);
+  if (!el) { alert('页面元素未找到，请刷新后再试'); return; }
+  var text = el.value.replace(/^\s+|\s+$/g, '');
+  if (!text) return alert('请输入公告内容');
+  // 附带按钮（可留空：后端自动复用已配置的按钮）
+  var btnEl = $('abtn_' + chatId);
+  var buttons = (btnEl ? btnEl.value : '').replace(/^\s+|\s+$/g, '');
+  if (!confirm('确认发送公告到 ' + chatId + ' 并置顶？')) return;
+  api('/admin/api/action', { method: 'POST', body: JSON.stringify({ action: 'announce', chatId: chatId, text: text, buttons: buttons }) }, function (r) {
+    alert((r && r.message) || (r && r.ok ? '已发送' : '失败'));
+    el.value = '';
+  });
+}
+
+function loadData() {
+  var prefix = $('dataPrefix').value;
+  var box = $('dataTable');
+  api('/admin/api/data?prefix=' + encodeURIComponent(prefix), {}, function (d) {
+    if (!d || !d.ok) { box.innerHTML = '<div class="empty">加载失败</div>'; return; }
+    $('dataCount').textContent = '共 ' + d.items.length + ' 条';
+    if (!d.items.length) { box.innerHTML = '<div class="empty">暂无数据</div>'; return; }
+    var html = '<table><tr><th>Key</th><th>值</th><th>操作</th></tr>';
+    for (var i = 0; i < d.items.length; i++) {
+      var it = d.items[i];
+      var val = (typeof it.value === 'string') ? it.value : JSON.stringify(it.value, null, 1);
+      html += '<tr><td style="max-width:260px;">' + esc(it.key) + '</td><td><pre style="font-size:11px; white-space:pre-wrap; max-height:120px; overflow:auto; margin:0;">' + esc(val) + '</pre></td><td><button class="btn danger sm" onclick="delCfg(\'' + esc(it.key) + '\')">删除</button></td></tr>';
+    }
+    box.innerHTML = html + '</table>';
+  });
+}
+
+function loadLogs(lines) {
+  var box = $('logsBox');
+  box.innerHTML = '<div class="loading">加载中...</div>';
+  api('/admin/api/logs?lines=' + (lines || 100), {}, function (d) {
+    box.innerHTML = (d && d.logs) ? esc(d.logs) : '<div class="empty">无日志</div>';
+  });
+}
+
+/* 初始化 */
+(function init() {
+  if (TOKEN) { showApp(); loadOverview(); }
+  else showLogin();
+})();
+</script>
+</body>
+</html>
